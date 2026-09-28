@@ -15,4 +15,3 @@ const Admin =
   mongoose.model<AdminDoc>("Admin", adminSchema);
 
 export default Admin;
-//test
