@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter, Playfair_Display } from 'next/font/google';
+import SmoothScroll from '@/components/site/SmoothScroll';
 import { CartProvider } from '@/lib/cart-context';
 import { getCustomerSession } from '@/lib/session';
 import { getCart } from '@/lib/cart';
@@ -35,6 +36,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   return (
     <html lang="en">
       <body className={`${playfair.variable} ${inter.variable} antialiased`}>
+        <SmoothScroll />
         <CartProvider signedIn={Boolean(session)} initialCart={cart}>
           {children}
         </CartProvider>

@@ -8,7 +8,8 @@
         "-lc",
         "source \"$HOME/.nvm/nvm.sh\" && nvm use 22 >/dev/null && exec npm run dev"
       ],
-      "port": 3000
+      "port": 3000,
+      "autoPort": true
     }
   ]
 }
