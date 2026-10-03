@@ -53,3 +53,46 @@
 @utility shadow-soft-lg {
   box-shadow: 0 2px 4px rgb(74 49 38 / 0.05), 0 16px 40px rgb(74 49 38 / 0.1);
 }
+
+/*
+ * Scrollbar in the brand palette: a gold thumb on a cream track, darkening to
+ * walnut while held.
+ *
+ * WebKit/Blink get the pseudo-elements, which allow the rounded, inset thumb.
+ * The standard `scrollbar-color` is only applied where those are unsupported
+ * (Firefox): in Chrome, setting it would switch the pseudo-element styling off.
+ */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-cream-200);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-gold);
+  border-radius: 999px;
+  /* A track-coloured border insets the thumb so it reads as a slim pill. */
+  border: 3px solid var(--color-cream-200);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-walnut-400);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: var(--color-walnut);
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--color-cream-200);
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  html {
+    scrollbar-color: var(--color-gold) var(--color-cream-200);
+    scrollbar-width: thin;
+  }
+}
