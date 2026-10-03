@@ -40,6 +40,11 @@ export default function Footer() {
             © {new Date().getFullYear()} {BAKERY.legal}
           </p>
         </div>
+
+        {/* Studio credit. Plain text until the studio has a public URL to link. */}
+        <p className="mt-6 text-center text-xs tracking-wide text-cream/40 sm:text-right">
+          Developed by <span className="text-cream/60">Runtime Collective</span>
+        </p>
       </div>
     </footer>
   );
