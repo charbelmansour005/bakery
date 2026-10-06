@@ -57,6 +57,7 @@ export default function StoryForm({ story }: { story: StoryDTO }) {
   const [body, setBody] = useState(story.body);
   const [primary, setPrimary] = useState(story.primary);
   const [secondary, setSecondary] = useState(story.secondary);
+  const [hero, setHero] = useState(story.hero);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -70,7 +71,7 @@ export default function StoryForm({ story }: { story: StoryDTO }) {
     const response = await fetch('/api/story', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ heading, body, primary, secondary }),
+      body: JSON.stringify({ heading, body, primary, secondary, hero }),
     });
 
     if (!response.ok) {
@@ -88,6 +89,15 @@ export default function StoryForm({ story }: { story: StoryDTO }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      <Slot
+        idPrefix="hero"
+        title="Hero photograph"
+        hint="The full-width photo at the top of the landing page, shown darkened behind the headline. Use a wide, landscape image at least 2000px across."
+        ratio="the screen, keeping the centre"
+        value={hero}
+        onChange={setHero}
+      />
+
       <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="text-sm font-semibold text-slate-900">Story text</h2>
         <p className="mt-1 mb-5 text-sm text-slate-500">

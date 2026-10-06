@@ -10,9 +10,9 @@ export default async function StoryAdminPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold text-slate-900">Our Story</h1>
+      <h1 className="text-xl font-semibold text-slate-900">Hero &amp; Story</h1>
       <p className="mt-1 mb-6 text-sm text-slate-500">
-        The text and photographs of the Our Story section on the landing page.
+        The hero photograph, and the text and photographs of the Our Story section, on the landing page.
       </p>
 
       <StoryForm story={story} />

@@ -44,6 +44,12 @@ export const STORY_TEXT = {
   ].join('\n\n'),
 } as const;
 
+/** Fallback hero photograph, on the same terms as STORY_IMAGES below. */
+export const HERO_IMAGE = {
+  src: '/images/hero-chocolate-sourdough.jpg',
+  alt: 'A chocolate sourdough loaf torn open on a linen cloth in a warm bakery kitchen',
+} as const;
+
 /**
  * Fallback photographs for the "Our Story" section.
  *

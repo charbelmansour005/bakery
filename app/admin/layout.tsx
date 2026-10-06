@@ -33,7 +33,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                   href="/admin/story"
                   className="text-sm text-slate-500 transition hover:text-slate-900"
                 >
-                  Our Story
+                  Hero &amp; Story
                 </Link>
                 <Link href="/" className="text-sm text-slate-500 transition hover:text-slate-900">
                   View site ↗

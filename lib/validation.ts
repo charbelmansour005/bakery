@@ -35,6 +35,7 @@ export const storyUpdateSchema = z
     body: z.string().trim().min(1, 'The story needs some text.').max(2000),
     primary: storyImageSchema,
     secondary: storyImageSchema,
+    hero: storyImageSchema,
   })
   .partial()
   .refine((value) => Object.values(value).some((field) => field !== undefined), {

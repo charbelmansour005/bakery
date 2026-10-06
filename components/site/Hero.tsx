@@ -1,18 +1,23 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { getStory } from '@/lib/story';
 import FleurDeLis from './FleurDeLis';
 
-export default function Hero() {
+/** The photograph comes from the CMS; lib/story.ts falls back to the default. */
+export default async function Hero() {
+  const { hero } = await getStory();
+
   return (
     // -mt-20 pulls the hero up behind the sticky nav so the nav can sit
     // transparently over the photograph; the inner padding puts the text back.
     <section className="relative -mt-20 flex min-h-[92dvh] items-center overflow-hidden lg:min-h-[88dvh]">
       <Image
-        src="/images/hero-chocolate-sourdough.jpg"
-        alt="A chocolate sourdough loaf torn open on a linen cloth in a warm bakery kitchen"
+        src={hero.url}
+        alt={hero.alt}
         fill
         priority
         sizes="100vw"
+        unoptimized={hero.url.startsWith('/api/media/')}
         className="object-cover object-center"
       />
       {/* Warm photography overlay, per the design: a flat #21150F fill at

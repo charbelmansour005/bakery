@@ -20,6 +20,8 @@ const storySchema = new Schema(
     singleton: { type: String, required: true, unique: true, default: 'story' },
     primary: { type: storyImageSchema, required: true, default: () => ({ url: '', alt: '' }) },
     secondary: { type: storyImageSchema, required: true, default: () => ({ url: '', alt: '' }) },
+    /** The landing page's hero photograph. Lives here so the page has one content document. */
+    hero: { type: storyImageSchema, required: true, default: () => ({ url: '', alt: '' }) },
     // Not `required`: a required String rejects '', and with `upsert` Mongoose
     // validates as though inserting — the same trap the photos hit. Empty means
     // "never saved", and lib/story.ts falls back to the defaults in lib/config.ts.

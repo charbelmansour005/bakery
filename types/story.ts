@@ -15,4 +15,6 @@ export type StoryDTO = {
   body: string;
   primary: StoryImageDTO;
   secondary: StoryImageDTO;
+  /** The full-bleed photograph behind the landing page's hero. */
+  hero: StoryImageDTO;
 };

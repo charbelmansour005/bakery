@@ -2,11 +2,12 @@ import 'server-only';
 import { cache } from 'react';
 import dbConnect from './db';
 import Story, { STORY_SINGLETON } from '@/models/Story';
-import { STORY_IMAGES, STORY_TEXT } from './config';
+import { HERO_IMAGE, STORY_IMAGES, STORY_TEXT } from './config';
 import type { StoryDTO } from '@/types/story';
 
 /**
- * The Our Story photographs, editable from the CMS.
+ * The landing page's editable content — the hero photograph and the Our Story
+ * section — managed from the CMS.
  *
  * STORY_IMAGES in lib/config.ts is the floor, not the source of truth: it is
  * what renders before anyone has saved anything (and if the document is
@@ -18,6 +19,7 @@ type LeanStory = {
   body?: string;
   primary?: { url?: string; alt?: string };
   secondary?: { url?: string; alt?: string };
+  hero?: { url?: string; alt?: string };
 };
 
 function toStoryDTO(doc: LeanStory | null): StoryDTO {
@@ -33,6 +35,10 @@ function toStoryDTO(doc: LeanStory | null): StoryDTO {
     secondary: {
       url: doc?.secondary?.url || STORY_IMAGES.secondary.src,
       alt: doc?.secondary?.alt || STORY_IMAGES.secondary.alt,
+    },
+    hero: {
+      url: doc?.hero?.url || HERO_IMAGE.src,
+      alt: doc?.hero?.alt || HERO_IMAGE.alt,
     },
   };
 }
@@ -60,6 +66,7 @@ export async function updateStory(input: Partial<StoryDTO>): Promise<StoryDTO> {
     body: input.body ?? current.body,
     primary: input.primary ?? current.primary,
     secondary: input.secondary ?? current.secondary,
+    hero: input.hero ?? current.hero,
   };
 
   const doc = await Story.findOneAndUpdate(
