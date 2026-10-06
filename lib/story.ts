@@ -2,7 +2,7 @@ import 'server-only';
 import { cache } from 'react';
 import dbConnect from './db';
 import Story, { STORY_SINGLETON } from '@/models/Story';
-import { HERO_IMAGE, STORY_IMAGES, STORY_TEXT } from './config';
+import { HERO_IMAGE, HERO_TEXT, STORY_IMAGES, STORY_TEXT } from './config';
 import type { StoryDTO } from '@/types/story';
 
 /**
@@ -20,6 +20,9 @@ type LeanStory = {
   primary?: { url?: string; alt?: string };
   secondary?: { url?: string; alt?: string };
   hero?: { url?: string; alt?: string };
+  heroEyebrow?: string;
+  heroHeadline?: string;
+  heroTagline?: string;
 };
 
 function toStoryDTO(doc: LeanStory | null): StoryDTO {
@@ -40,6 +43,9 @@ function toStoryDTO(doc: LeanStory | null): StoryDTO {
       url: doc?.hero?.url || HERO_IMAGE.src,
       alt: doc?.hero?.alt || HERO_IMAGE.alt,
     },
+    heroEyebrow: doc?.heroEyebrow || HERO_TEXT.eyebrow,
+    heroHeadline: doc?.heroHeadline || HERO_TEXT.headline,
+    heroTagline: doc?.heroTagline || HERO_TEXT.tagline,
   };
 }
 
@@ -67,6 +73,9 @@ export async function updateStory(input: Partial<StoryDTO>): Promise<StoryDTO> {
     primary: input.primary ?? current.primary,
     secondary: input.secondary ?? current.secondary,
     hero: input.hero ?? current.hero,
+    heroEyebrow: input.heroEyebrow ?? current.heroEyebrow,
+    heroHeadline: input.heroHeadline ?? current.heroHeadline,
+    heroTagline: input.heroTagline ?? current.heroTagline,
   };
 
   const doc = await Story.findOneAndUpdate(

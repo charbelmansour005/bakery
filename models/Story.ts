@@ -22,6 +22,11 @@ const storySchema = new Schema(
     secondary: { type: storyImageSchema, required: true, default: () => ({ url: '', alt: '' }) },
     /** The landing page's hero photograph. Lives here so the page has one content document. */
     hero: { type: storyImageSchema, required: true, default: () => ({ url: '', alt: '' }) },
+    // Hero copy. Empty means "never saved", as with heading/body below.
+    heroEyebrow: { type: String, default: '', trim: true },
+    /** One line per row; the last line is set in gold. */
+    heroHeadline: { type: String, default: '', trim: true },
+    heroTagline: { type: String, default: '', trim: true },
     // Not `required`: a required String rejects '', and with `upsert` Mongoose
     // validates as though inserting — the same trap the photos hit. Empty means
     // "never saved", and lib/story.ts falls back to the defaults in lib/config.ts.

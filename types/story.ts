@@ -17,4 +17,10 @@ export type StoryDTO = {
   secondary: StoryImageDTO;
   /** The full-bleed photograph behind the landing page's hero. */
   hero: StoryImageDTO;
+  /** The small line above the hero headline. */
+  heroEyebrow: string;
+  /** One line per row; the last line is set in gold. */
+  heroHeadline: string;
+  /** The italic sentence under the hero headline. */
+  heroTagline: string;
 };

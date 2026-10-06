@@ -3,9 +3,14 @@ import Link from 'next/link';
 import { getStory } from '@/lib/story';
 import FleurDeLis from './FleurDeLis';
 
-/** The photograph comes from the CMS; lib/story.ts falls back to the default. */
+/** Photograph and copy come from the CMS; lib/story.ts falls back to the defaults. */
 export default async function Hero() {
-  const { hero } = await getStory();
+  const { hero, heroEyebrow, heroHeadline, heroTagline } = await getStory();
+  // Edited as plain text, one headline row per line; the last row is gold.
+  const lines = heroHeadline
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
 
   return (
     // -mt-20 pulls the hero up behind the sticky nav so the nav can sit
@@ -29,19 +34,22 @@ export default async function Hero() {
         <div className="max-w-xl text-center lg:text-left">
           <div className="flex items-center justify-center gap-3 lg:justify-start">
             <FleurDeLis className="h-4 w-4 text-gold" />
-            <span className="eyebrow text-gold">Est. 2026</span>
+            <span className="eyebrow text-gold">{heroEyebrow}</span>
           </div>
 
           <h1 className="mt-6 font-display text-4xl leading-[1.15] text-cream sm:text-5xl lg:text-6xl">
-            Naturally Fermented.
-            <br />
-            Hand Shaped.
-            <br />
-            <span className="text-gold">Baked Fresh.</span>
+            {lines.map((line, index) => (
+              <span
+                key={index}
+                className={`block ${index === lines.length - 1 && lines.length > 1 ? 'text-gold' : ''}`}
+              >
+                {line}
+              </span>
+            ))}
           </h1>
 
           <p className="mt-6 font-display text-lg italic text-cream/80 sm:text-xl">
-            Slow-rested sourdough in small batches — choose your loaf, then make it yours.
+            {heroTagline}
           </p>
 
           <div className="mt-9 flex flex-col items-center gap-4 sm:flex-row lg:items-start">

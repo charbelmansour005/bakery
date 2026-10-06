@@ -85,7 +85,7 @@ the idea written in. Nothing is stored. Both use the number in `lib/config.ts`.
 ### CMS
 
 One admin. Log in at `/admin/login`, then manage products at `/admin/products`
-(add, edit, delete, replace images) and the hero photograph plus the Our Story text and photographs at
+(add, edit, delete, replace images) and the hero photograph and text plus the Our Story text and photographs at
 `/admin/story`.
 
 Auth is a signed JWT in an httpOnly cookie. `middleware.ts` does an optimistic

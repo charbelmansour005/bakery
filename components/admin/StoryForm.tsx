@@ -58,6 +58,9 @@ export default function StoryForm({ story }: { story: StoryDTO }) {
   const [primary, setPrimary] = useState(story.primary);
   const [secondary, setSecondary] = useState(story.secondary);
   const [hero, setHero] = useState(story.hero);
+  const [heroEyebrow, setHeroEyebrow] = useState(story.heroEyebrow);
+  const [heroHeadline, setHeroHeadline] = useState(story.heroHeadline);
+  const [heroTagline, setHeroTagline] = useState(story.heroTagline);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -71,7 +74,16 @@ export default function StoryForm({ story }: { story: StoryDTO }) {
     const response = await fetch('/api/story', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ heading, body, primary, secondary, hero }),
+      body: JSON.stringify({
+        heading,
+        body,
+        primary,
+        secondary,
+        hero,
+        heroEyebrow,
+        heroHeadline,
+        heroTagline,
+      }),
     });
 
     if (!response.ok) {
@@ -97,6 +109,54 @@ export default function StoryForm({ story }: { story: StoryDTO }) {
         value={hero}
         onChange={setHero}
       />
+
+      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-sm font-semibold text-slate-900">Hero text</h2>
+        <p className="mt-1 mb-5 text-sm text-slate-500">
+          The words over the hero photograph. The two buttons below them are fixed.
+        </p>
+
+        <label htmlFor="hero-eyebrow" className="block text-sm font-medium text-slate-700">
+          Small top line
+        </label>
+        <input
+          id="hero-eyebrow"
+          value={heroEyebrow}
+          onChange={(event) => setHeroEyebrow(event.target.value)}
+          required
+          maxLength={60}
+          className={FIELD}
+        />
+
+        <label htmlFor="hero-headline" className="mt-5 block text-sm font-medium text-slate-700">
+          Headline
+        </label>
+        <textarea
+          id="hero-headline"
+          value={heroHeadline}
+          onChange={(event) => setHeroHeadline(event.target.value)}
+          required
+          rows={3}
+          maxLength={160}
+          className={FIELD}
+        />
+        <p className="mt-1 text-xs text-slate-500">
+          One line per row. The last line is shown in gold.
+        </p>
+
+        <label htmlFor="hero-tagline" className="mt-5 block text-sm font-medium text-slate-700">
+          Tagline
+        </label>
+        <textarea
+          id="hero-tagline"
+          value={heroTagline}
+          onChange={(event) => setHeroTagline(event.target.value)}
+          required
+          rows={2}
+          maxLength={240}
+          className={FIELD}
+        />
+      </div>
 
       <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="text-sm font-semibold text-slate-900">Story text</h2>

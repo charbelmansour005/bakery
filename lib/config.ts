@@ -44,6 +44,13 @@ export const STORY_TEXT = {
   ].join('\n\n'),
 } as const;
 
+/** Fallback hero copy. `headline` is one line per row; the last is set in gold. */
+export const HERO_TEXT = {
+  eyebrow: 'Est. 2026',
+  headline: ['Naturally Fermented.', 'Hand Shaped.', 'Baked Fresh.'].join('\n'),
+  tagline: 'Slow-rested sourdough in small batches — choose your loaf, then make it yours.',
+} as const;
+
 /** Fallback hero photograph, on the same terms as STORY_IMAGES below. */
 export const HERO_IMAGE = {
   src: '/images/hero-chocolate-sourdough.jpg',
