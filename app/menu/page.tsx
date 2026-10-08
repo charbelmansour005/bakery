@@ -5,6 +5,7 @@ import SectionDivider from '@/components/site/SectionDivider';
 import SiteNav from '@/components/site/SiteNav';
 import StickyOrderBar from '@/components/site/StickyOrderBar';
 import { getProducts, groupByCategory } from '@/lib/products';
+import { isWhishConfigured } from '@/lib/whish';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +40,7 @@ export default async function MenuPage() {
       </main>
 
       <Footer />
-      <StickyOrderBar />
+      <StickyOrderBar paymentsEnabled={isWhishConfigured()} />
     </>
   );
 }

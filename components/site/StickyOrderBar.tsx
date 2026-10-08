@@ -1,17 +1,22 @@
 'use client';
 
+import Link from 'next/link';
 import { useCart } from '@/lib/cart-context';
 import { formatCents } from '@/lib/money';
 import { buildOrderMessage, whatsappUrl } from '@/lib/whatsapp';
 
 /**
- * Visual cart summary only — there is no checkout. "Review Order" hands the
- * order to WhatsApp so the customer can confirm it with the bakery directly.
+ * A running summary of the cart. "Review Order" leads to the cart page, where
+ * the customer pays — or, while online payment is switched off, straight to
+ * WhatsApp so they can confirm the order with the bakery directly.
  *
  * Every line carries its own loaf, so any cart here is an order the bakery can
  * fill — there is no half-built state to guard against before handing off.
  */
-export default function StickyOrderBar() {
+const REVIEW_BUTTON =
+  'rounded-lg bg-gold px-6 py-3 text-sm font-semibold tracking-wide text-walnut transition hover:bg-gold-300';
+
+export default function StickyOrderBar({ paymentsEnabled = false }: { paymentsEnabled?: boolean }) {
   const { lines, isEmpty, totalCents, removeLine, clear, error } = useCart();
 
   if (isEmpty) return null;
@@ -67,14 +72,20 @@ export default function StickyOrderBar() {
           <p className="font-display text-lg text-walnut">
             Total <span className="ml-1 text-gold">{formatCents(totalCents)}</span>
           </p>
-          <a
-            href={whatsappUrl(buildOrderMessage(lines, totalCents))}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-lg bg-gold px-6 py-3 text-sm font-semibold tracking-wide text-walnut transition hover:bg-gold-300"
-          >
-            Review Order
-          </a>
+          {paymentsEnabled ? (
+            <Link href="/cart" className={REVIEW_BUTTON}>
+              Review Order
+            </Link>
+          ) : (
+            <a
+              href={whatsappUrl(buildOrderMessage(lines, totalCents))}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={REVIEW_BUTTON}
+            >
+              Review Order
+            </a>
+          )}
         </div>
       </div>
     </div>

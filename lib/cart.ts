@@ -169,3 +169,27 @@ export async function clearCart(customerId: string): Promise<CartDTO> {
   );
   return EMPTY_CART;
 }
+
+/**
+ * Removes the lines a paid order covered, and nothing else.
+ *
+ * Not simply clearCart(): between pressing Pay and Whish confirming, the
+ * customer may have added something in another tab, and that item was not paid
+ * for — it has to survive.
+ */
+export async function removeCartLines(customerId: string, keys: string[]): Promise<void> {
+  if (!isValidObjectId(customerId) || keys.length === 0) return;
+  await dbConnect();
+
+  const cart = await Cart.findOne({ customerId }).lean<{ lines?: LeanLine[] } | null>();
+  const stored = cart?.lines ?? [];
+  if (stored.length === 0) return;
+
+  const paid = new Set(keys);
+  const remaining = stored.filter(
+    (line) => !line.base || !paid.has(lineKey(line.base.toString(), line.addOn?.toString() ?? null)),
+  );
+  if (remaining.length === stored.length) return;
+
+  await Cart.updateOne({ customerId }, { $set: { lines: remaining } });
+}

@@ -25,6 +25,17 @@ export const BAKERY = {
   instagram: 'labellefournee',
 } as const;
 
+/**
+ * Pickup rules for paid orders. Every loaf ferments for thirty-six hours, so
+ * the earliest a customer can collect is two days after ordering.
+ */
+export const PICKUP = {
+  /** Days between ordering and the first day offered. */
+  leadDays: 2,
+  /** How many days are offered, starting from that first day. */
+  windowDays: 14,
+} as const;
+
 export const NAV_LINKS = [
   { label: 'Home', href: '/' },
   { label: 'Menu', href: '/menu' },

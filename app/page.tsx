@@ -9,6 +9,7 @@ import SiteNav from '@/components/site/SiteNav';
 import StickyOrderBar from '@/components/site/StickyOrderBar';
 import StorySection from '@/components/site/StorySection';
 import { getProducts, groupByCategory } from '@/lib/products';
+import { isWhishConfigured } from '@/lib/whish';
 
 // Rendered per request so a change made in the CMS shows up immediately.
 export const dynamic = 'force-dynamic';
@@ -96,7 +97,7 @@ export default async function HomePage() {
       </main>
 
       <Footer />
-      <StickyOrderBar />
+      <StickyOrderBar paymentsEnabled={isWhishConfigured()} />
     </>
   );
 }

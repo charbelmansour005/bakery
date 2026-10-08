@@ -10,7 +10,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "whish:check": "tsx scripts/whish-check.ts",
+    "whish:mock": "tsx scripts/whish-mock.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.0",

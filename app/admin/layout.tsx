@@ -24,6 +24,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               </Link>
               <nav className="flex items-center gap-5">
                 <Link
+                  href="/admin/orders"
+                  className="text-sm text-slate-500 transition hover:text-slate-900"
+                >
+                  Orders
+                </Link>
+                <Link
                   href="/admin/products"
                   className="text-sm text-slate-500 transition hover:text-slate-900"
                 >

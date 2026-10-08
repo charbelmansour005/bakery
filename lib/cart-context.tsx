@@ -33,6 +33,8 @@ type CartState = {
   togglePlain: (base: ProductDTO) => void;
   removeLine: (key: string) => void;
   clear: () => void;
+  /** Re-reads the cart from the server — after a payment has emptied it there. */
+  refresh: () => Promise<void>;
   pending: boolean;
   error: string | null;
 };
@@ -221,10 +223,11 @@ export function CartProvider({
       togglePlain,
       removeLine,
       clear,
+      refresh: resync,
       pending,
       error,
     }),
-    [signedIn, lines, setToppingLoaf, togglePlain, removeLine, clear, pending, error],
+    [signedIn, lines, setToppingLoaf, togglePlain, removeLine, clear, resync, pending, error],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
