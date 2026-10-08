@@ -15,3 +15,5 @@ const Admin =
   mongoose.model<AdminDoc>("Admin", adminSchema);
 
 export default Admin;
+
+// path: models/Admin.ts
