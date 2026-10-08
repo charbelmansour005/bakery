@@ -23,8 +23,8 @@ const SECONDARY =
  * rather than after a server round trip.
  *
  * With online payment on, this is also the checkout: the customer says when
- * they will collect and pays through Whish, or sends the same order over
- * WhatsApp to pay on pickup. With it off, "Review Order" opens the same two
+ * they will collect and pays through Whish, or chooses cash on delivery, which
+ * sends the same order over WhatsApp. With it off, "Review Order" opens the same two
  * choices as the order bar does, with Whish marked as coming soon.
  */
 export default function CartView({
@@ -217,11 +217,12 @@ export default function CartView({
                     rel="noopener noreferrer"
                     className={SECONDARY}
                   >
-                    Order on WhatsApp
+                    Cash on delivery
                   </a>
                 </div>
                 <p className="mt-3 text-xs text-walnut-400">
-                  Pay now with your Whish account, or send the order on WhatsApp and pay when you collect.{' '}
+                  Pay now with your Whish account, or choose cash on delivery: your order is sent
+                  on WhatsApp and you pay in cash when you receive it.{' '}
                   <Link href="/menu" className="underline underline-offset-4 transition hover:text-walnut">
                     Keep browsing
                   </Link>

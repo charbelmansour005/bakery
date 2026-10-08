@@ -79,11 +79,12 @@ the next page load with no rebuild.
 Every ordered item carries its own loaf: an order is a list of lines, each a
 plain loaf or a topping on the loaf the customer picked for it (see
 [Accounts and the cart](#accounts-and-the-cart)). "Review Order" opens a dialog
-with the two ways to place it: pay through Whish, or send the order over
-WhatsApp and pay on collection. Choosing Whish leads to `/cart`, which is also
-the checkout — the customer picks a pickup day and pays (see
-[Payments](#payments)). Until Whish is configured, the dialog shows it as
-"Coming soon" and WhatsApp is the only choice that can be taken.
+with the two ways to place it: pay through Whish, or "Cash on delivery", which
+sends the order to the bakery over WhatsApp to be paid for in person. Choosing
+Whish leads to `/cart`, which is also the checkout — the customer picks a pickup
+day and pays (see [Payments](#payments)). Until Whish is configured, the dialog
+shows it as "Coming soon" and cash on delivery is the only choice that can be
+taken.
 
 The "Have an Idea?" form also goes over WhatsApp: submitting opens a chat with
 the idea written in. Nothing is stored. Both use the number in `lib/config.ts`.

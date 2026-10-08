@@ -5,7 +5,7 @@ import type { CartLineDTO } from '@/types/cart';
 import type { OrderDTO, OrderLineDTO } from '@/types/order';
 
 /**
- * What the site sends to the bakery over WhatsApp: pay-on-pickup orders,
+ * What the site sends to the bakery over WhatsApp: cash-on-delivery orders,
  * flavour ideas, and a copy of an order already paid online. Not marked
  * `server-only` — the order bar and the idea form are client components.
  */

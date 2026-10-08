@@ -7,7 +7,7 @@ import ReviewOrderDialog from './ReviewOrderDialog';
 
 /**
  * A running summary of the cart. "Review Order" asks how the customer wants to
- * place it — pay through Whish, or send it over WhatsApp — rather than deciding
+ * place it — pay through Whish, or cash on delivery — rather than deciding
  * for them.
  *
  * Every line carries its own loaf, so any cart here is an order the bakery can

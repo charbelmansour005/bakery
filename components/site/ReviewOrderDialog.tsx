@@ -12,7 +12,8 @@ const OPTION =
 
 /**
  * "Review Order" opens this: the two ways to place the order, side by side —
- * pay online through Whish, or send it over WhatsApp and pay on collection.
+ * pay online through Whish, or cash on delivery — which sends the order to the
+ * bakery over WhatsApp, to be paid for in person.
  *
  * Until the Whish credentials are set, its option is shown but not offered:
  * marked "Coming soon", with nothing to press.
@@ -119,9 +120,11 @@ export default function ReviewOrderDialog({
             }`}
           >
             <span>
-              <span className="block text-sm font-semibold text-walnut">Order on WhatsApp</span>
+              <span className="block text-sm font-semibold text-walnut">Cash on delivery</span>
+              {/* Says where the tap goes: the label alone does not suggest that
+                  WhatsApp is about to open. */}
               <span className="mt-0.5 block text-xs text-walnut-400">
-                Send the order to the bakery and pay when you collect.
+                Send your order on WhatsApp and pay in cash when you receive it.
               </span>
             </span>
             <Arrow />
