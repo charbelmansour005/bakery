@@ -226,19 +226,38 @@ export default function CartView({
                 </p>
               </form>
             ) : (
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                <a
-                  href={whatsappUrl(buildOrderMessage(lines, totalCents))}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={PRIMARY}
-                >
-                  Review Order
-                </a>
-                <Link href="/menu" className={SECONDARY}>
-                  Keep browsing
-                </Link>
-              </div>
+              <>
+                <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                  <a
+                    href={whatsappUrl(buildOrderMessage(lines, totalCents))}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={PRIMARY}
+                  >
+                    Review Order
+                  </a>
+                  <Link href="/menu" className={SECONDARY}>
+                    Keep browsing
+                  </Link>
+                </div>
+
+                {/* Shown until the Whish credentials are set; the checkout
+                    form above replaces it the moment they are. A notice, not a
+                    disabled button — there is nothing here to press yet. */}
+                <div className="mt-6 flex flex-col items-start gap-2.5 rounded-lg border border-dashed border-walnut/25 px-4 py-3.5 sm:flex-row-reverse sm:items-center sm:justify-between sm:gap-4">
+                  {/* First in the markup so it sits above the text on a phone;
+                      reversed into the right-hand side from `sm` up. */}
+                  <span className="eyebrow shrink-0 rounded-full bg-gold/20 px-3 py-1.5 text-walnut">
+                    Coming soon
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-walnut">Pay online with Whish</p>
+                    <p className="mt-0.5 text-xs text-walnut-400">
+                      For now, send your order on WhatsApp and pay when you collect.
+                    </p>
+                  </div>
+                </div>
+              </>
             )}
           </>
         )}
