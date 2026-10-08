@@ -6,9 +6,12 @@ import { useCart } from '@/lib/cart-context';
 import { formatCents } from '@/lib/money';
 import { buildOrderMessage, whatsappUrl } from '@/lib/whatsapp';
 import FleurDeLis from './FleurDeLis';
+import { DeliveryMark, WhishLogo } from './PaymentMarks';
 
 const OPTION =
-  'flex w-full items-center justify-between gap-4 rounded-lg border px-5 py-4 text-left transition';
+  'flex w-full items-center justify-between gap-4 rounded-lg border px-4 py-4 text-left transition';
+/** A mark and the words beside it. */
+const LABEL = 'flex items-center gap-3.5';
 
 /**
  * "Review Order" opens this: the two ways to place the order, side by side —
@@ -84,10 +87,13 @@ export default function ReviewOrderDialog({
               onClick={onClose}
               className={`${OPTION} border-gold bg-gold/10 hover:bg-gold/20`}
             >
-              <span>
-                <span className="block text-sm font-semibold text-walnut">Pay with Whish</span>
-                <span className="mt-0.5 block text-xs text-walnut-400">
-                  Choose your pickup day and pay online now.
+              <span className={LABEL}>
+                <WhishLogo />
+                <span>
+                  <span className="block text-sm font-semibold text-walnut">Pay with Whish</span>
+                  <span className="mt-0.5 block text-xs text-walnut-400">
+                    Choose your pickup day and pay online now.
+                  </span>
                 </span>
               </span>
               <Arrow />
@@ -97,10 +103,13 @@ export default function ReviewOrderDialog({
             // plain text that reads as "this is coming", not as a broken control.
             // Stacked on a phone, where the tag would otherwise squeeze the text
             // into a column two words wide.
-            <div className="flex w-full flex-col items-start gap-2.5 rounded-lg border border-dashed border-walnut/25 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-              <span>
-                <span className="block text-sm font-semibold text-walnut/60">Pay with Whish</span>
-                <span className="mt-0.5 block text-xs text-walnut-400">Pay online, right here.</span>
+            <div className="flex w-full flex-col items-start gap-3 rounded-lg border border-dashed border-walnut/25 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <span className={LABEL}>
+                <WhishLogo />
+                <span>
+                  <span className="block text-sm font-semibold text-walnut/60">Pay with Whish</span>
+                  <span className="mt-0.5 block text-xs text-walnut-400">Pay online, right here.</span>
+                </span>
               </span>
               <span className="eyebrow shrink-0 rounded-full bg-gold/20 px-3 py-1.5 text-walnut">
                 Coming soon
@@ -119,12 +128,15 @@ export default function ReviewOrderDialog({
                 : 'border-gold bg-gold/10 hover:bg-gold/20'
             }`}
           >
-            <span>
-              <span className="block text-sm font-semibold text-walnut">Cash on delivery</span>
-              {/* Says where the tap goes: the label alone does not suggest that
-                  WhatsApp is about to open. */}
-              <span className="mt-0.5 block text-xs text-walnut-400">
-                Send your order on WhatsApp and pay in cash when you receive it.
+            <span className={LABEL}>
+              <DeliveryMark />
+              <span>
+                <span className="block text-sm font-semibold text-walnut">Cash on delivery</span>
+                {/* Says where the tap goes: the label alone does not suggest that
+                    WhatsApp is about to open. */}
+                <span className="mt-0.5 block text-xs text-walnut-400">
+                  Send your order on WhatsApp and pay in cash when you receive it.
+                </span>
               </span>
             </span>
             <Arrow />

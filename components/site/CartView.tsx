@@ -8,6 +8,7 @@ import { formatCents } from '@/lib/money';
 import { formatPickupDate, type PickupWindow } from '@/lib/pickup';
 import { useSignOut } from '@/lib/use-sign-out';
 import { buildOrderMessage, whatsappUrl } from '@/lib/whatsapp';
+import { DeliveryIcon, WhishLogo } from './PaymentMarks';
 import ReviewOrderDialog from './ReviewOrderDialog';
 
 const FIELD =
@@ -208,15 +209,21 @@ export default function CartView({
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                   {/* Held back while a cart change is still saving, so the order
                       is built from the cart the customer is looking at. */}
-                  <button type="submit" disabled={paying || pending} className={PRIMARY}>
+                  <button
+                    type="submit"
+                    disabled={paying || pending}
+                    className={`${PRIMARY} flex items-center justify-center gap-2.5`}
+                  >
+                    <WhishLogo size={22} />
                     {paying ? 'Opening Whish…' : `Pay ${formatCents(totalCents)} with Whish`}
                   </button>
                   <a
                     href={whatsappUrl(buildOrderMessage(lines, totalCents, { pickupDate, note }))}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={SECONDARY}
+                    className={`${SECONDARY} flex items-center justify-center gap-2.5`}
                   >
+                    <DeliveryIcon className="h-5 w-5 shrink-0" />
                     Cash on delivery
                   </a>
                 </div>
