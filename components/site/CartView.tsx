@@ -8,6 +8,7 @@ import { formatCents } from '@/lib/money';
 import { formatPickupDate, type PickupWindow } from '@/lib/pickup';
 import { useSignOut } from '@/lib/use-sign-out';
 import { buildOrderMessage, whatsappUrl } from '@/lib/whatsapp';
+import ReviewOrderDialog from './ReviewOrderDialog';
 
 const FIELD =
   'mt-2 w-full rounded-lg border border-walnut/20 bg-cream-50 px-4 py-3 text-sm text-walnut placeholder:text-walnut-400/70 focus:border-gold focus:ring-2 focus:ring-gold/40 focus:outline-none';
@@ -23,8 +24,8 @@ const SECONDARY =
  *
  * With online payment on, this is also the checkout: the customer says when
  * they will collect and pays through Whish, or sends the same order over
- * WhatsApp to pay on pickup. With it off, "Review Order" goes to WhatsApp, as
- * it always has.
+ * WhatsApp to pay on pickup. With it off, "Review Order" opens the same two
+ * choices as the order bar does, with Whish marked as coming soon.
  */
 export default function CartView({
   email,
@@ -46,6 +47,7 @@ export default function CartView({
   const [note, setNote] = useState('');
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
+  const [reviewing, setReviewing] = useState(false);
 
   async function handlePay(event: React.FormEvent) {
     event.preventDefault();
@@ -228,35 +230,19 @@ export default function CartView({
             ) : (
               <>
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                  <a
-                    href={whatsappUrl(buildOrderMessage(lines, totalCents))}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={PRIMARY}
-                  >
+                  <button type="button" onClick={() => setReviewing(true)} className={PRIMARY}>
                     Review Order
-                  </a>
+                  </button>
                   <Link href="/menu" className={SECONDARY}>
                     Keep browsing
                   </Link>
                 </div>
 
-                {/* Shown until the Whish credentials are set; the checkout
-                    form above replaces it the moment they are. A notice, not a
-                    disabled button — there is nothing here to press yet. */}
-                <div className="mt-6 flex flex-col items-start gap-2.5 rounded-lg border border-dashed border-walnut/25 px-4 py-3.5 sm:flex-row-reverse sm:items-center sm:justify-between sm:gap-4">
-                  {/* First in the markup so it sits above the text on a phone;
-                      reversed into the right-hand side from `sm` up. */}
-                  <span className="eyebrow shrink-0 rounded-full bg-gold/20 px-3 py-1.5 text-walnut">
-                    Coming soon
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-walnut">Pay online with Whish</p>
-                    <p className="mt-0.5 text-xs text-walnut-400">
-                      For now, send your order on WhatsApp and pay when you collect.
-                    </p>
-                  </div>
-                </div>
+                <ReviewOrderDialog
+                  open={reviewing}
+                  onClose={() => setReviewing(false)}
+                  paymentsEnabled={false}
+                />
               </>
             )}
           </>

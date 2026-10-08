@@ -78,12 +78,12 @@ the next page load with no rebuild.
 
 Every ordered item carries its own loaf: an order is a list of lines, each a
 plain loaf or a topping on the loaf the customer picked for it (see
-[Accounts and the cart](#accounts-and-the-cart)). The cart icon in the nav opens
-`/cart`, which is also the checkout: the customer picks a pickup day and pays
-through Whish, or sends the same order over WhatsApp to pay on collection (see
-[Payments](#payments)). Until Whish is configured, "Review Order" simply opens a
-WhatsApp chat with the order pre-filled, and the cart shows online payment as
-"Coming soon".
+[Accounts and the cart](#accounts-and-the-cart)). "Review Order" opens a dialog
+with the two ways to place it: pay through Whish, or send the order over
+WhatsApp and pay on collection. Choosing Whish leads to `/cart`, which is also
+the checkout — the customer picks a pickup day and pays (see
+[Payments](#payments)). Until Whish is configured, the dialog shows it as
+"Coming soon" and WhatsApp is the only choice that can be taken.
 
 The "Have an Idea?" form also goes over WhatsApp: submitting opens a chat with
 the idea written in. Nothing is stored. Both use the number in `lib/config.ts`.
@@ -200,9 +200,9 @@ customers. Expired rows are removed by a MongoDB TTL index rather than a sweeper
 ## Payments
 
 Online payment goes through [Whish Money](https://whish.money). It is optional:
-with the `WHISH_*` variables unset, ordering works exactly as it did before
-payments existed and the cart page announces Whish as "Coming soon", so the code
-can be deployed ahead of the credentials. Setting the variables is the switch —
+with the `WHISH_*` variables unset, orders still go over WhatsApp and the
+"Review Order" dialog announces Whish as "Coming soon", so the code can be
+deployed ahead of the credentials. Setting the variables is the switch —
 there is no separate flag to flip.
 
 ### The flow
