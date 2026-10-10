@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 import { useCart } from '@/lib/cart-context';
 import { formatCents } from '@/lib/money';
-import { buildOrderMessage, whatsappUrl } from '@/lib/whatsapp';
+import { useCashOrder } from '@/lib/use-cash-order';
 import FleurDeLis from './FleurDeLis';
 import { DeliveryMark, WhishLogo } from './PaymentMarks';
 
@@ -15,8 +15,8 @@ const LABEL = 'flex items-center gap-3.5';
 
 /**
  * "Review Order" opens this: the two ways to place the order, side by side —
- * pay online through Whish, or cash on delivery — which sends the order to the
- * bakery over WhatsApp, to be paid for in person.
+ * pay online through Whish, or cash on delivery — which saves the order, sends
+ * it to the bakery over WhatsApp, and is paid for in person.
  *
  * Until the Whish credentials are set, its option is shown but not offered:
  * marked "Coming soon", with nothing to press.
@@ -38,6 +38,7 @@ export default function ReviewOrderDialog({
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const { lines, totalCents } = useCart();
+  const { place, placing, error } = useCashOrder();
 
   useEffect(() => {
     const dialog = ref.current;
@@ -117,12 +118,13 @@ export default function ReviewOrderDialog({
             </div>
           )}
 
-          <a
-            href={whatsappUrl(buildOrderMessage(lines, totalCents))}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={onClose}
-            className={`${OPTION} ${
+          <button
+            type="button"
+            disabled={placing}
+            onClick={async () => {
+              if (await place()) onClose();
+            }}
+            className={`${OPTION} disabled:opacity-60 ${
               paymentsEnabled
                 ? 'border-walnut/25 hover:border-walnut hover:bg-walnut/5'
                 : 'border-gold bg-gold/10 hover:bg-gold/20'
@@ -131,7 +133,9 @@ export default function ReviewOrderDialog({
             <span className={LABEL}>
               <DeliveryMark />
               <span>
-                <span className="block text-sm font-semibold text-walnut">Cash on delivery</span>
+                <span className="block text-sm font-semibold text-walnut">
+                  {placing ? 'Placing your order…' : 'Cash on delivery'}
+                </span>
                 {/* Says where the tap goes: the label alone does not suggest that
                     WhatsApp is about to open. */}
                 <span className="mt-0.5 block text-xs text-walnut-400">
@@ -140,8 +144,14 @@ export default function ReviewOrderDialog({
               </span>
             </span>
             <Arrow />
-          </a>
+          </button>
         </div>
+
+        {error && (
+          <p role="alert" className="mt-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-700">
+            {error}
+          </p>
+        )}
 
         <button
           type="button"

@@ -7,7 +7,7 @@ import { useCart } from '@/lib/cart-context';
 import { formatCents } from '@/lib/money';
 import { formatPickupDate, type PickupWindow } from '@/lib/pickup';
 import { useSignOut } from '@/lib/use-sign-out';
-import { buildOrderMessage, whatsappUrl } from '@/lib/whatsapp';
+import { useCashOrder } from '@/lib/use-cash-order';
 import { DeliveryIcon, WhishLogo } from './PaymentMarks';
 import ReviewOrderDialog from './ReviewOrderDialog';
 
@@ -25,7 +25,7 @@ const SECONDARY =
  *
  * With online payment on, this is also the checkout: the customer says when
  * they will collect and pays through Whish, or chooses cash on delivery, which
- * sends the same order over WhatsApp. With it off, "Review Order" opens the same two
+ * saves the order and sends it over WhatsApp. With it off, "Review Order" opens the same two
  * choices as the order bar does, with Whish marked as coming soon.
  */
 export default function CartView({
@@ -49,6 +49,7 @@ export default function CartView({
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
   const [reviewing, setReviewing] = useState(false);
+  const cash = useCashOrder();
 
   async function handlePay(event: React.FormEvent) {
     event.preventDefault();
@@ -200,9 +201,9 @@ export default function CartView({
                   />
                 </div>
 
-                {payError && (
+                {(payError || cash.error) && (
                   <p role="alert" className="mt-5 rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-700">
-                    {payError}
+                    {payError || cash.error}
                   </p>
                 )}
 
@@ -217,19 +218,19 @@ export default function CartView({
                     <WhishLogo size={22} />
                     {paying ? 'Opening Whish…' : `Pay ${formatCents(totalCents)} with Whish`}
                   </button>
-                  <a
-                    href={whatsappUrl(buildOrderMessage(lines, totalCents, { pickupDate, note }))}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`${SECONDARY} flex items-center justify-center gap-2.5`}
+                  <button
+                    type="button"
+                    disabled={cash.placing || paying || pending}
+                    onClick={() => cash.place({ phone, pickupDate, note })}
+                    className={`${SECONDARY} flex items-center justify-center gap-2.5 disabled:opacity-50`}
                   >
                     <DeliveryIcon className="h-5 w-5 shrink-0" />
-                    Cash on delivery
-                  </a>
+                    {cash.placing ? 'Placing your order…' : 'Cash on delivery'}
+                  </button>
                 </div>
                 <p className="mt-3 text-xs text-walnut-400">
-                  Pay now with your Whish account, or choose cash on delivery: your order is sent
-                  on WhatsApp and you pay in cash when you receive it.{' '}
+                  Pay now with your Whish account, or choose cash on delivery: your order is saved and
+                  sent on WhatsApp, and you pay in cash when you receive it.{' '}
                   <Link href="/menu" className="underline underline-offset-4 transition hover:text-walnut">
                     Keep browsing
                   </Link>
@@ -259,14 +260,10 @@ export default function CartView({
 
       <p className="mt-6 text-center text-xs text-walnut-400">
         Signed in as {email} ·{' '}
-        {paymentsEnabled && (
-          <>
-            <Link href="/orders" className="underline underline-offset-4 transition hover:text-walnut">
-              Past orders
-            </Link>{' '}
-            ·{' '}
-          </>
-        )}
+        <Link href="/orders" className="underline underline-offset-4 transition hover:text-walnut">
+          My orders
+        </Link>{' '}
+        ·{' '}
         <button
           type="button"
           onClick={signOut}

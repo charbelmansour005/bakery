@@ -41,7 +41,7 @@ test.describe('paying with Whish', () => {
     await page.getByRole('button', { name: 'Review Order' }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).not.toContainText('Coming soon');
-    await expect(dialog.getByRole('link', { name: /Cash on delivery/ })).toHaveAttribute('href', /wa\.me\/96171862139/);
+    await expect(dialog.getByRole('button', { name: /Cash on delivery/ })).toBeVisible();
     await dialog.getByRole('link', { name: /Pay with Whish/ }).click();
     await page.waitForURL('**/cart');
 
@@ -245,7 +245,7 @@ test.describe('paying with Whish', () => {
     const response = await other.goto(`${baseURL}/orders/${order._id}`);
     expect(response!.status()).toBe(404);
     await other.goto(`${baseURL}/orders`);
-    await expect(other.getByText('No paid orders yet.')).toBeVisible();
+    await expect(other.getByText('No orders yet.')).toBeVisible();
     await context.close();
   });
 });

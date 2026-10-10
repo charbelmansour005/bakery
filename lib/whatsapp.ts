@@ -1,29 +1,16 @@
 import { BAKERY, WHATSAPP_NUMBER } from './config';
 import { formatCents } from './money';
 import { formatPickupDate } from './pickup';
-import type { CartLineDTO } from '@/types/cart';
 import type { OrderDTO, OrderLineDTO } from '@/types/order';
 
 /**
- * What the site sends to the bakery over WhatsApp: cash-on-delivery orders,
- * flavour ideas, and a copy of an order already paid online. Not marked
+ * What the site sends to the bakery over WhatsApp: flavour ideas, and a copy
+ * of every saved order — cash on delivery, or already paid online. Not marked
  * `server-only` — the order bar and the idea form are client components.
  */
 
 export function whatsappUrl(text: string): string {
   return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
-}
-
-/**
- * One line per item, in the bakery's own notation:
- *
- *   - Multigrain $2.00 + Classic $4 = $6.00
- *   - Classic $4 (plain)
- */
-function describeLine(line: CartLineDTO): string {
-  const loaf = `${line.base.name} ${formatCents(line.base.price, { compact: true })}`;
-  if (!line.addOn) return `- ${loaf} (plain)`;
-  return `- ${line.addOn.name} ${formatCents(line.addOn.price)} + ${loaf} = ${formatCents(line.totalCents)}`;
 }
 
 export function buildIdeaMessage(idea: string): string {
@@ -38,36 +25,32 @@ function extraLines(extras: { pickupDate?: string; note?: string }): string[] {
   ].filter(Boolean);
 }
 
-export function buildOrderMessage(
-  lines: CartLineDTO[],
-  totalCents: number,
-  extras: { pickupDate?: string; note?: string } = {},
-): string {
-  return [
-    `Hello ${BAKERY.name}! I would like to pre-order:`,
-    '',
-    ...lines.map(describeLine),
-    '',
-    `Total: ${formatCents(totalCents)}`,
-    ...extraLines(extras),
-  ].join('\n');
-}
-
-/** The same notation as describeLine, from an order's price snapshot. */
+/**
+ * One line per item, in the bakery's own notation:
+ *
+ *   - Multigrain $2.00 + Classic $4 = $6.00
+ *   - Classic $4 (plain)
+ */
 export function describeOrderLine(line: OrderLineDTO): string {
   const loaf = `${line.baseName} ${formatCents(line.basePriceCents, { compact: true })}`;
   if (!line.addOnName) return `- ${loaf} (plain)`;
   return `- ${line.addOnName} ${formatCents(line.addOnPriceCents)} + ${loaf} = ${formatCents(line.totalCents)}`;
 }
 
-/** Sent by the customer after paying online, so the order also lands in the bakery's chat. */
-export function buildPaidOrderMessage(order: OrderDTO): string {
+/**
+ * A saved order, written out for the bakery's chat: one already paid online,
+ * or a cash-on-delivery order the customer has just placed.
+ */
+export function buildSavedOrderMessage(order: OrderDTO): string {
+  const cash = order.paymentMethod === 'cash';
   return [
-    `Hello ${BAKERY.name}! I just paid for order #${order.number} online.`,
+    cash
+      ? `Hello ${BAKERY.name}! I placed order #${order.number}, cash on delivery.`
+      : `Hello ${BAKERY.name}! I just paid for order #${order.number} online.`,
     '',
     ...order.lines.map(describeOrderLine),
     '',
-    `Total paid: ${formatCents(order.totalCents)}`,
+    `${cash ? 'Total' : 'Total paid'}: ${formatCents(order.totalCents)}`,
     ...extraLines({ pickupDate: order.pickupDate, note: order.note }),
   ].join('\n');
 }

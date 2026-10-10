@@ -9,7 +9,7 @@ test.describe('before Whish is configured', () => {
     ]);
   });
 
-  test('Review Order offers Whish as coming soon and cash on delivery over WhatsApp', async ({ page, menuItems }) => {
+  test('Review Order offers Whish as coming soon, beside cash on delivery', async ({ page }) => {
     await page.goto('/menu');
     await page.getByRole('button', { name: 'Review Order' }).click();
 
@@ -21,11 +21,7 @@ test.describe('before Whish is configured', () => {
     await expect(dialog.getByRole('link', { name: /Pay with Whish/ })).toHaveCount(0);
     await expect(dialog.locator('img[src*="whish"]')).toBeVisible();
 
-    const cash = dialog.getByRole('link', { name: /Cash on delivery/ });
-    const href = decodeURIComponent((await cash.getAttribute('href')) ?? '');
-    expect(href).toContain('https://wa.me/96171862139');
-    expect(href).toContain(menuItems.toppings[0].name);
-    expect(href).toContain('Total:');
+    await expect(dialog.getByRole('button', { name: /Cash on delivery/ })).toBeVisible();
 
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();

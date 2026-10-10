@@ -124,31 +124,42 @@ function orderRowsHtml(order: OrderDTO): string {
     <table role="presentation" style="width:100%;border-collapse:collapse">
       ${rows}
       <tr>
-        <td style="padding:12px 0 0;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#8a6a58">Total paid</td>
+        <td style="padding:12px 0 0;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#8a6a58">${totalLabel(order)}</td>
         <td style="padding:12px 0 0;font-size:20px;text-align:right">${formatCents(order.totalCents)}</td>
       </tr>
     </table>`;
 }
 
+const isCash = (order: OrderDTO) => order.paymentMethod === 'cash';
+/** A cash order is owed, not paid. */
+const totalLabel = (order: OrderDTO) => (isCash(order) ? 'Total due on delivery' : 'Total paid');
+/** The pickup day, or a plain statement that there is none yet. */
+const pickupText = (order: OrderDTO) =>
+  order.pickupDate ? formatPickupDate(order.pickupDate) : 'to be arranged';
+
 function orderLinesText(order: OrderDTO): string[] {
   return order.lines.map((line) => `- ${orderLineTitle(line)}  ${formatCents(line.totalCents)}`);
 }
 
-/** Marks sandbox payments so nobody bakes for one. */
+/** Marks sandbox payments so nobody bakes for one. A cash order is never a test. */
 function testPrefix(order: OrderDTO): string {
-  return order.mode === 'test' ? '[TEST] ' : '';
+  return order.mode === 'test' && !isCash(order) ? '[TEST] ' : '';
 }
 
-/** The customer's receipt, sent once when Whish confirms the payment. */
+/** The customer's copy: a receipt for an online payment, a confirmation for a cash order. */
 export async function sendOrderReceiptEmail(order: OrderDTO): Promise<void> {
-  const pickup = formatPickupDate(order.pickupDate);
+  const cash = isCash(order);
+  const pickup = pickupText(order);
+  const headline = cash ? 'Your order is placed.' : "Thank you — it's paid.";
 
   const text = [
-    `Thank you — your order #${order.number} is paid.`,
+    cash
+      ? `Your order #${order.number} is placed. You pay in cash when you receive it.`
+      : `Thank you — your order #${order.number} is paid.`,
     ``,
     ...orderLinesText(order),
     ``,
-    `Total paid: ${formatCents(order.totalCents)}`,
+    `${totalLabel(order)}: ${formatCents(order.totalCents)}`,
     `Pickup: ${pickup}, ${BAKERY.address}`,
     ...(order.note ? [`Your note: ${order.note}`] : []),
     ``,
@@ -157,7 +168,7 @@ export async function sendOrderReceiptEmail(order: OrderDTO): Promise<void> {
 
   const html = orderShell(`
     <p style="margin:0 0 6px;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#8a6a58;text-align:center">Order #${order.number}</p>
-    <p style="margin:0 0 24px;font-size:24px;text-align:center">Thank you — it's paid.</p>
+    <p style="margin:0 0 24px;font-size:24px;text-align:center">${escapeHtml(headline)}</p>
     ${orderRowsHtml(order)}
     <p style="margin:24px 0 0;font-size:15px"><strong>Pickup:</strong> ${escapeHtml(pickup)}<br>${escapeHtml(BAKERY.address)}</p>
     ${order.note ? `<p style="margin:12px 0 0;font-size:14px;color:#8a6a58"><strong>Your note:</strong> ${escapeHtml(order.note)}</p>` : ''}
@@ -165,48 +176,50 @@ export async function sendOrderReceiptEmail(order: OrderDTO): Promise<void> {
 
   await sendMail({
     to: order.email,
-    subject: `${testPrefix(order)}Your ${BAKERY.name} order #${order.number} is paid`,
+    subject: `${testPrefix(order)}Your ${BAKERY.name} order #${order.number} is ${cash ? 'placed' : 'paid'}`,
     text,
     html,
   });
 }
 
-/** Where paid-order notifications go. Defaults to the account the site sends from. */
+/** Where new-order notifications go. Defaults to the account the site sends from. */
 function bakeryInbox(): string | null {
   return process.env.ORDER_NOTIFY_EMAIL?.trim() || process.env.SMTP_USER?.trim() || null;
 }
 
-/** Tells the bakery a paid order has come in. */
+/** Tells the bakery an order has come in — paid online, or placed for cash. */
 export async function sendOrderNotificationEmail(order: OrderDTO): Promise<void> {
   const to = bakeryInbox();
   if (!to) {
-    console.warn(`Order #${order.number} is paid, but no ORDER_NOTIFY_EMAIL is set to notify.`);
+    console.warn(`Order #${order.number} came in, but no ORDER_NOTIFY_EMAIL is set to notify.`);
     return;
   }
 
-  const pickup = formatPickupDate(order.pickupDate);
+  const kind = isCash(order) ? 'cash-on-delivery order' : 'paid order';
+  const pickup = pickupText(order);
+  const phone = order.phone || 'not given';
 
   const text = [
-    `New paid order #${order.number} — ${formatCents(order.totalCents)}`,
+    `New ${kind} #${order.number} — ${formatCents(order.totalCents)}`,
     ``,
     `Pickup: ${pickup}`,
     `Customer: ${order.email}`,
-    `Phone: ${order.phone}`,
+    `Phone: ${phone}`,
     ...(order.payerPhone ? [`Paid from Whish account: ${order.payerPhone}`] : []),
     ...(order.note ? [`Note: ${order.note}`] : []),
     ``,
     ...orderLinesText(order),
     ``,
-    `Total paid: ${formatCents(order.totalCents)}`,
+    `${totalLabel(order)}: ${formatCents(order.totalCents)}`,
   ].join('\n');
 
   const html = orderShell(`
-    <p style="margin:0 0 6px;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#8a6a58;text-align:center">New paid order</p>
+    <p style="margin:0 0 6px;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#8a6a58;text-align:center">New ${kind}</p>
     <p style="margin:0 0 24px;font-size:24px;text-align:center">#${order.number} · ${formatCents(order.totalCents)}</p>
     <p style="margin:0 0 20px;font-size:15px;line-height:1.6">
       <strong>Pickup:</strong> ${escapeHtml(pickup)}<br>
       <strong>Customer:</strong> ${escapeHtml(order.email)}<br>
-      <strong>Phone:</strong> ${escapeHtml(order.phone)}
+      <strong>Phone:</strong> ${escapeHtml(phone)}
       ${order.payerPhone ? `<br><strong>Paid from Whish account:</strong> ${escapeHtml(order.payerPhone)}` : ''}
       ${order.note ? `<br><strong>Note:</strong> ${escapeHtml(order.note)}` : ''}
     </p>
@@ -214,7 +227,7 @@ export async function sendOrderNotificationEmail(order: OrderDTO): Promise<void>
 
   await sendMail({
     to,
-    subject: `${testPrefix(order)}New paid order #${order.number} — pickup ${pickup}`,
+    subject: `${testPrefix(order)}New ${kind} #${order.number} — pickup ${pickup}`,
     text,
     html,
   });

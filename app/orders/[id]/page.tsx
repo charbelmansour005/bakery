@@ -10,17 +10,18 @@ import { BAKERY } from '@/lib/config';
 import { formatCents } from '@/lib/money';
 import { getOrderForCustomer, settleOrder } from '@/lib/orders';
 import { formatPickupDate } from '@/lib/pickup';
-import { buildPaidOrderMessage, whatsappUrl } from '@/lib/whatsapp';
-import { orderLineTitle } from '@/types/order';
+import { buildSavedOrderMessage, whatsappUrl } from '@/lib/whatsapp';
+import { isConfirmed, orderLineTitle } from '@/types/order';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata = { title: 'Your order · La Belle Fournée' };
 
 /**
- * Where the customer lands after Whish's payment page — for a success and a
- * failure alike. What it shows is what Whish confirms when asked, never what
- * the URL they arrived on claims.
+ * One order. It is where the customer lands after Whish's payment page — for a
+ * success and a failure alike, showing what Whish confirms when asked, never
+ * what the URL they arrived on claims — and after placing a cash order. It is
+ * also what each entry in "My orders" opens.
  */
 export default async function OrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -35,7 +36,8 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
     order = (await getOrderForCustomer(id, session.sub)) ?? order;
   }
 
-  const paid = order.status === 'paid';
+  const confirmed = isConfirmed(order.status);
+  const cash = order.paymentMethod === 'cash';
 
   return (
     <>
@@ -44,14 +46,20 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         <div className="text-center">
           <p className="eyebrow text-gold">Order #{order.number}</p>
           <h1 className="mt-3 font-display text-4xl text-walnut">
-            {paid ? 'Thank you — it’s paid' : order.status === 'failed' ? 'Payment not completed' : 'Almost there'}
+            {order.status === 'paid'
+              ? 'Thank you — it’s paid'
+              : order.status === 'placed'
+                ? 'Your order is placed'
+                : order.status === 'failed'
+                  ? 'Payment not completed'
+                  : 'Almost there'}
           </h1>
           <div className="mt-7 mb-9">
             <SectionDivider />
           </div>
         </div>
 
-        {order.mode === 'test' && (
+        {order.mode === 'test' && !cash && (
           <p className="mb-5 rounded-lg border border-gold/40 bg-gold/10 px-4 py-2.5 text-center text-xs text-walnut">
             Test payment — no money has moved and nothing will be baked.
           </p>
@@ -75,7 +83,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             </div>
           )}
 
-          {paid && (
+          {confirmed && (
             <>
               <CartRefresh />
 
@@ -91,7 +99,9 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
               </ul>
 
               <div className="mt-2 flex items-baseline justify-between border-t border-walnut/15 pt-4">
-                <span className="eyebrow text-walnut-400">Total paid</span>
+                <span className="eyebrow text-walnut-400">
+                  {cash ? 'Total due on delivery' : 'Total paid'}
+                </span>
                 <span className="font-display text-2xl text-walnut">{formatCents(order.totalCents)}</span>
               </div>
 
@@ -99,14 +109,16 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                 <div>
                   <dt className="eyebrow text-walnut-400">Pickup</dt>
                   <dd className="mt-1.5 font-display text-lg text-walnut">
-                    {formatPickupDate(order.pickupDate)}
+                    {order.pickupDate ? formatPickupDate(order.pickupDate) : 'To be arranged'}
                   </dd>
                   <dd className="text-sm text-walnut-400">{BAKERY.address}</dd>
                 </div>
                 <div>
                   <dt className="eyebrow text-walnut-400">We will reach you on</dt>
-                  <dd className="mt-1.5 font-display text-lg text-walnut">{order.phone}</dd>
-                  <dd className="text-sm text-walnut-400">A receipt is on its way to {order.email}.</dd>
+                  <dd className="mt-1.5 font-display text-lg text-walnut">{order.phone || 'WhatsApp'}</dd>
+                  <dd className="text-sm text-walnut-400">
+                    {cash ? 'A confirmation' : 'A receipt'} was sent to {order.email}.
+                  </dd>
                 </div>
                 {order.note && (
                   <div className="sm:col-span-2">
@@ -118,7 +130,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <a
-                  href={whatsappUrl(buildPaidOrderMessage(order))}
+                  href={whatsappUrl(buildSavedOrderMessage(order))}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="rounded-lg bg-gold px-6 py-3 text-center text-sm font-semibold tracking-wide text-walnut transition hover:bg-gold-300"
@@ -133,8 +145,12 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                 </Link>
               </div>
               <p className="mt-3 text-xs text-walnut-400">
-                The bakery already has your order. Sending it on WhatsApp just puts it in your chat with
-                us too.
+                {cash
+                  ? 'The bakery has your order. If WhatsApp did not open, send it from here so we can confirm the details with you.'
+                  : 'The bakery already has your order. Sending it on WhatsApp just puts it in your chat with us too.'}{' '}
+                <Link href="/orders" className="underline underline-offset-4 transition hover:text-walnut">
+                  See all my orders
+                </Link>
               </p>
             </>
           )}

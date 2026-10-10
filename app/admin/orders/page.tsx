@@ -5,7 +5,7 @@ import { formatCents } from '@/lib/money';
 import { listOrdersForAdmin, reconcileUnpaidOrders } from '@/lib/orders';
 import { formatPickupDate } from '@/lib/pickup';
 import { isWhishConfigured, whishMode } from '@/lib/whish';
-import { orderLineTitle, type OrderDTO } from '@/types/order';
+import { isConfirmed, orderLineTitle, type OrderDTO } from '@/types/order';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +27,9 @@ function StatusBadge({ order }: { order: OrderDTO }) {
         ? ['Payment failed', 'bg-red-50 text-red-700']
         : order.fulfilledAt
           ? ['Done', 'bg-slate-100 text-slate-600']
-          : ['Paid — to bake', 'bg-green-50 text-green-700'];
+          : order.paymentMethod === 'cash'
+            ? ['Cash — to bake', 'bg-amber-50 text-amber-800']
+            : ['Paid — to bake', 'bg-green-50 text-green-700'];
 
   return (
     <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${tone}`}>
@@ -47,7 +49,7 @@ export default async function OrdersAdminPage({
   // Catch any payment whose confirmation never reached us before listing.
   await reconcileUnpaidOrders();
   const orders = await listOrdersForAdmin({ includeUnpaid: showAll });
-  const open = orders.filter((order) => order.status === 'paid' && !order.fulfilledAt).length;
+  const open = orders.filter((order) => isConfirmed(order.status) && !order.fulfilledAt).length;
 
   return (
     <div>
@@ -55,33 +57,33 @@ export default async function OrdersAdminPage({
         <div>
           <h1 className="text-xl font-semibold text-slate-900">Orders</h1>
           <p className="mt-1 text-sm text-slate-500">
-            {open} paid order{open === 1 ? '' : 's'} to bake. Soonest pickup first.
+            {open} order{open === 1 ? '' : 's'} to bake. Soonest pickup first.
           </p>
         </div>
         <Link
           href={showAll ? '/admin/orders' : '/admin/orders?show=all'}
           className="text-sm text-slate-600 underline underline-offset-4 transition hover:text-slate-900"
         >
-          {showAll ? 'Show paid orders only' : 'Also show unpaid attempts'}
+          {showAll ? 'Hide unpaid attempts' : 'Also show unpaid attempts'}
         </Link>
       </div>
 
       {!isWhishConfigured() && (
         <p className="mt-5 rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Online payment is switched off — the Whish credentials are not set, so customers can only
-          order on WhatsApp.
+          order cash on delivery.
         </p>
       )}
       {isWhishConfigured() && whishMode() === 'test' && (
         <p className="mt-5 rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Whish is in test mode. These are test payments — no money has moved.
+          Whish is in test mode. Orders marked paid are test payments — no money has moved.
         </p>
       )}
 
       <div className="mt-6 overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
         {orders.length === 0 ? (
           <p className="px-6 py-12 text-center text-sm text-slate-500">
-            No {showAll ? '' : 'paid '}orders yet. They appear here the moment a payment is confirmed.
+            No orders yet. They appear here the moment one is placed or paid for.
           </p>
         ) : (
           <table className="w-full text-left text-sm">
@@ -103,10 +105,10 @@ export default async function OrdersAdminPage({
                     <p className="text-xs whitespace-nowrap text-slate-500">{placedAt(order.createdAt)}</p>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-slate-900">
-                    {formatPickupDate(order.pickupDate)}
+                    {order.pickupDate ? formatPickupDate(order.pickupDate) : 'To arrange'}
                   </td>
                   <td className="px-4 py-3">
-                    <p className="text-slate-900">{order.phone}</p>
+                    {order.phone && <p className="text-slate-900">{order.phone}</p>}
                     <p className="text-xs text-slate-500">{order.email}</p>
                     {order.payerPhone && order.payerPhone !== order.phone && (
                       <p className="text-xs text-slate-500">Paid from {order.payerPhone}</p>
@@ -130,7 +132,7 @@ export default async function OrdersAdminPage({
                   <td className="px-4 py-3">
                     <div className="flex flex-col items-end gap-2">
                       <StatusBadge order={order} />
-                      {order.status === 'paid' && (
+                      {isConfirmed(order.status) && (
                         <FulfilButton
                           id={order.id}
                           number={order.number}

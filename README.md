@@ -80,18 +80,22 @@ Every ordered item carries its own loaf: an order is a list of lines, each a
 plain loaf or a topping on the loaf the customer picked for it (see
 [Accounts and the cart](#accounts-and-the-cart)). "Review Order" opens a dialog
 with the two ways to place it: pay through Whish, or "Cash on delivery", which
-sends the order to the bakery over WhatsApp to be paid for in person. Choosing
+saves the order, sends it to the bakery over WhatsApp and is paid for in person. Choosing
 Whish leads to `/cart`, which is also the checkout — the customer picks a pickup
 day and pays (see [Payments](#payments)). Until Whish is configured, the dialog
 shows it as "Coming soon" and cash on delivery is the only choice that can be
 taken.
+
+Signed-in customers find everything they have ordered under "My orders" in the
+nav (`/orders`): orders paid online and cash orders alike, each opening its own
+page.
 
 The "Have an Idea?" form also goes over WhatsApp: submitting opens a chat with
 the idea written in. Nothing is stored. Both use the number in `lib/config.ts`.
 
 ### CMS
 
-One admin. Log in at `/admin/login`, then see paid orders at `/admin/orders`
+One admin. Log in at `/admin/login`, then see paid and cash orders at `/admin/orders`
 (soonest pickup first; mark each one done when it is handed over), manage
 products at `/admin/products` (add, edit, delete, replace images) and the hero photograph and text plus the Our Story text and photographs at
 `/admin/story`.
@@ -114,7 +118,8 @@ treated as an authorization boundary.
 | `POST /api/auth/login` · `POST /api/auth/logout` | Admin session |
 | `POST /api/account/request-code` · `verify-code` · `logout` | Public (rate limited) |
 | `GET` / `PUT` / `DELETE /api/cart` | Signed-in customer |
-| `POST /api/checkout` | Signed-in customer |
+| `POST /api/checkout` | Signed-in customer — starts a Whish payment |
+| `POST /api/orders` | Signed-in customer — places a cash-on-delivery order |
 | `GET /api/whish/callback` | Public — called by Whish; trusts nothing in the request |
 | `PATCH /api/orders/:id` | Admin |
 | `GET /api/story` | Public |
@@ -220,6 +225,20 @@ called, with a snapshot of names and prices — unlike the cart, it must not
 change when the menu does. Its number (`#1001`, `#1002`, …) is also the
 `externalId` given to Whish, which must be numeric and never repeat, so it comes
 from an atomic counter that is never reset.
+
+### Cash on delivery
+
+The other way to order needs no payment at all. `POST /api/orders` saves the
+cart as an order with status `placed` — built from the server's cart, at the
+server's prices, exactly as a Whish order is — empties the cart, emails the
+bakery and the customer, and returns a WhatsApp link with the order written out.
+The phone number and pickup day are optional here: the one-tap route in the
+dialog has no form, and those details are settled in the chat.
+
+A cash order records that the customer asked for it, not that they went on to
+send the WhatsApp message; the bakery hears by email and in the admin either
+way. `settleOrder()` leaves cash orders alone — there is no payment for Whish to
+confirm.
 
 ### The one rule
 
@@ -380,5 +399,5 @@ it, and they open the CMS without saving anything.
 
 ## Not built, on purpose
 
-No refunds from the site · no stock limits or sold-out days · no delivery, pickup
+No cancelling or editing an order from the site · no refunds from the site · no stock limits or sold-out days · no delivery, pickup
 only · no email on the ideas form · one admin, no roles.

@@ -8,11 +8,20 @@ import { createPayment, getPaymentStatus, isWhishConfigured, whishMode } from '.
 import Counter from '@/models/Counter';
 import Order from '@/models/Order';
 import type { CustomerSession } from './session';
-import type { CheckoutInput } from './validation';
-import type { OrderDTO, OrderLineDTO, OrderMode, OrderStatus } from '@/types/order';
+import type { CashOrderInput, CheckoutInput } from './validation';
+import { buildSavedOrderMessage, whatsappUrl } from './whatsapp';
+import type { CartDTO } from '@/types/cart';
+import {
+  isConfirmed,
+  type OrderDTO,
+  type OrderLineDTO,
+  type OrderMode,
+  type OrderStatus,
+  type PaymentMethod,
+} from '@/types/order';
 
 /**
- * Orders and their payment.
+ * Orders, and how they are paid for: online through Whish, or in cash.
  *
  * The rule everything here protects: **an order is paid only when Whish says
  * so, to us, server to server.** Whish's callback carries no signature, so it
@@ -24,13 +33,16 @@ import type { OrderDTO, OrderLineDTO, OrderMode, OrderStatus } from '@/types/ord
 
 /** First order number is 1001. */
 const ORDER_NUMBER_BASE = 1000;
-/** Each checkout calls Whish, so one customer cannot hammer it. */
+/** One customer cannot hammer Whish, or fill the bakery's list with orders. */
 const MAX_ORDERS_PER_WINDOW = 5;
 const ORDER_WINDOW_MINUTES = 10;
 /** How long an unpaid order is still worth asking Whish about. */
 const SETTLE_WINDOW_HOURS = 24;
 /** Unpaid orders re-checked each time the bakery opens its Orders page. */
 const RECONCILE_LIMIT = 15;
+
+/** Orders the bakery should bake. Mirrors isConfirmed() for use in queries. */
+const CONFIRMED: OrderStatus[] = ['paid', 'placed'];
 
 /** A failure with a message that is safe to show the customer. */
 export class OrderError extends Error {
@@ -53,6 +65,8 @@ type LeanOrder = {
   lines: OrderLineDTO[];
   totalCents: number;
   status: OrderStatus;
+  /** Absent on orders saved before cash orders existed; those were all Whish. */
+  paymentMethod?: PaymentMethod;
   mode: OrderMode;
   callbackToken: string;
   collectUrl?: string;
@@ -67,11 +81,12 @@ function toOrderDTO(doc: LeanOrder): OrderDTO {
     id: doc._id.toString(),
     number: doc.number,
     status: doc.status,
+    paymentMethod: doc.paymentMethod ?? 'whish',
     mode: doc.mode,
     email: doc.email,
-    phone: doc.phone,
+    phone: doc.phone ?? '',
     payerPhone: doc.payerPhone ?? '',
-    pickupDate: doc.pickupDate,
+    pickupDate: doc.pickupDate ?? '',
     note: doc.note ?? '',
     lines: doc.lines.map((line) => ({
       key: line.key,
@@ -109,6 +124,44 @@ function siteOrigin(requestOrigin: string): string {
 /* ---------- checkout ---------- */
 
 /**
+ * The cart an order is about to be built from, checked. Shared by both ways of
+ * ordering, so neither can be more lenient than the other.
+ */
+async function cartForOrder(session: CustomerSession, expectedTotalCents: number): Promise<CartDTO> {
+  await dbConnect();
+
+  // The server's copy of the cart, at today's prices. Nothing about the items
+  // or their prices is taken from the request.
+  const cart = await getCart(session.sub);
+  if (cart.lines.length === 0) {
+    throw new OrderError('Your order is empty.');
+  }
+  if (cart.totalCents !== expectedTotalCents) {
+    throw new OrderError('Your order changed since this page loaded. Check it and try again.', 409);
+  }
+
+  const since = new Date(Date.now() - ORDER_WINDOW_MINUTES * 60_000);
+  const recent = await Order.countDocuments({ customerId: session.sub, createdAt: { $gte: since } });
+  if (recent >= MAX_ORDERS_PER_WINDOW) {
+    throw new OrderError('Too many orders in a row. Wait a few minutes and try again.', 429);
+  }
+
+  return cart;
+}
+
+/** The cart's lines as an order keeps them: names and prices, not references. */
+function snapshotLines(cart: CartDTO): OrderLineDTO[] {
+  return cart.lines.map((line) => ({
+    key: line.key,
+    baseName: line.base.name,
+    basePriceCents: line.base.price,
+    addOnName: line.addOn?.name ?? null,
+    addOnPriceCents: line.addOn?.price ?? 0,
+    totalCents: line.totalCents,
+  }));
+}
+
+/**
  * Turns the customer's cart into a pending order and opens a Whish payment for
  * it. Returns the URL of Whish's payment page.
  */
@@ -120,23 +173,7 @@ export async function createOrderFromCart(
   if (!isWhishConfigured()) {
     throw new OrderError('Online payment is not available right now.', 503);
   }
-  await dbConnect();
-
-  // The server's copy of the cart, at today's prices. Nothing about the items
-  // or their prices is taken from the request.
-  const cart = await getCart(session.sub);
-  if (cart.lines.length === 0) {
-    throw new OrderError('Your order is empty.');
-  }
-  if (cart.totalCents !== details.expectedTotalCents) {
-    throw new OrderError('Your order changed since this page loaded. Check it and try again.', 409);
-  }
-
-  const since = new Date(Date.now() - ORDER_WINDOW_MINUTES * 60_000);
-  const recent = await Order.countDocuments({ customerId: session.sub, createdAt: { $gte: since } });
-  if (recent >= MAX_ORDERS_PER_WINDOW) {
-    throw new OrderError('Too many payment attempts. Wait a few minutes and try again.', 429);
-  }
+  const cart = await cartForOrder(session, details.expectedTotalCents);
 
   const number = await nextOrderNumber();
   const callbackToken = randomBytes(24).toString('hex');
@@ -148,17 +185,11 @@ export async function createOrderFromCart(
     phone: details.phone,
     pickupDate: details.pickupDate,
     note: details.note,
-    lines: cart.lines.map((line) => ({
-      key: line.key,
-      baseName: line.base.name,
-      basePriceCents: line.base.price,
-      addOnName: line.addOn?.name ?? null,
-      addOnPriceCents: line.addOn?.price ?? 0,
-      totalCents: line.totalCents,
-    })),
+    lines: snapshotLines(cart),
     totalCents: cart.totalCents,
     currency: 'USD',
     status: 'pending',
+    paymentMethod: 'whish',
     mode: whishMode(),
     callbackToken,
   });
@@ -196,11 +227,50 @@ export async function createOrderFromCart(
   return { orderId: id, url: collectUrl };
 }
 
+/**
+ * Saves the customer's cart as a cash-on-delivery order. There is no payment to
+ * confirm, so the order is final the moment it is written: the cart is emptied
+ * and both emails go out. Returns the WhatsApp link that hands the same order to
+ * the bakery's chat.
+ *
+ * This records that the customer asked for the order — not that they went on to
+ * send the WhatsApp message. The bakery is told by email either way.
+ */
+export async function placeCashOrder(
+  session: CustomerSession,
+  details: CashOrderInput,
+): Promise<{ orderId: string; whatsappUrl: string }> {
+  const cart = await cartForOrder(session, details.expectedTotalCents);
+
+  const created = await Order.create({
+    number: await nextOrderNumber(),
+    customerId: session.sub,
+    email: session.email,
+    phone: details.phone,
+    pickupDate: details.pickupDate,
+    note: details.note,
+    lines: snapshotLines(cart),
+    totalCents: cart.totalCents,
+    currency: 'USD',
+    status: 'placed',
+    paymentMethod: 'cash',
+    mode: whishMode(),
+    // Never used — no callback will ever come for a cash order — but every
+    // order carries one, so none can be matched by an empty token.
+    callbackToken: randomBytes(24).toString('hex'),
+  });
+
+  const order = toOrderDTO(created.toObject() as unknown as LeanOrder);
+  await afterConfirmed(order, session.sub);
+
+  return { orderId: order.id, whatsappUrl: whatsappUrl(buildSavedOrderMessage(order)) };
+}
+
 /* ---------- settlement ---------- */
 
-/** Runs once per order, for whichever caller won the transition to paid. */
-async function afterPaid(order: OrderDTO, customerId: string): Promise<void> {
-  // Nothing here may undo the payment: each step fails on its own, and loudly.
+/** Runs once per order: when a payment is confirmed, or a cash order is placed. */
+async function afterConfirmed(order: OrderDTO, customerId: string): Promise<void> {
+  // Nothing here may undo the order: each step fails on its own, and loudly.
   await removeCartLines(
     customerId,
     order.lines.map((line) => line.key),
@@ -235,7 +305,10 @@ export async function settleOrder(orderId: string): Promise<OrderDTO | null> {
 
   const order = await Order.findById(orderId).lean<LeanOrder | null>();
   if (!order) return null;
-  if (order.status === 'paid' || !isWhishConfigured()) return toOrderDTO(order);
+  // Paid is final, and a cash order has no payment for Whish to know about.
+  if (order.status === 'paid' || order.status === 'placed' || !isWhishConfigured()) {
+    return toOrderDTO(order);
+  }
 
   let result: Awaited<ReturnType<typeof getPaymentStatus>>;
   try {
@@ -256,7 +329,7 @@ export async function settleOrder(orderId: string): Promise<OrderDTO | null> {
 
     if (paid) {
       const dto = toOrderDTO(paid);
-      await afterPaid(dto, paid.customerId.toString());
+      await afterConfirmed(dto, paid.customerId.toString());
       return dto;
     }
   } else if (result.status === 'failed') {
@@ -337,16 +410,21 @@ export async function getOrderForCustomer(
     ...toOrderDTO(order),
     // Only while unpaid: lets the customer go back and finish paying.
     payUrl: order.status === 'pending' ? (order.collectUrl ?? '') : '',
-    settleable: order.status !== 'paid' && ageMs < SETTLE_WINDOW_HOURS * 3_600_000,
+    settleable:
+      (order.status === 'pending' || order.status === 'failed') &&
+      ageMs < SETTLE_WINDOW_HOURS * 3_600_000,
   };
 }
 
-/** The customer's paid orders, newest first. */
-export async function listPaidOrdersForCustomer(customerId: string): Promise<OrderDTO[]> {
+/**
+ * The customer's order history, newest first: everything paid online or placed
+ * for cash. Abandoned and failed payment attempts are not orders, and stay out.
+ */
+export async function listOrdersForCustomer(customerId: string): Promise<OrderDTO[]> {
   if (!isValidObjectId(customerId)) return [];
   await dbConnect();
 
-  const orders = await Order.find({ customerId, status: 'paid' })
+  const orders = await Order.find({ customerId, status: { $in: CONFIRMED } })
     .sort({ createdAt: -1 })
     .limit(30)
     .lean<LeanOrder[]>();
@@ -375,28 +453,30 @@ export async function listOrdersForAdmin(options: { includeUnpaid?: boolean } = 
 
   const orders = await Order.find({
     mode: whishMode(),
-    ...(options.includeUnpaid ? {} : { status: 'paid' }),
+    ...(options.includeUnpaid ? {} : { status: { $in: CONFIRMED } }),
   })
     .sort({ createdAt: -1 })
     .limit(300)
     .lean<LeanOrder[]>();
 
-  const rank = (order: OrderDTO) => (order.status !== 'paid' ? 2 : order.fulfilledAt ? 1 : 0);
+  const rank = (order: OrderDTO) => (!isConfirmed(order.status) ? 2 : order.fulfilledAt ? 1 : 0);
+  // An order with no pickup day yet sorts after the dated ones.
+  const day = (order: OrderDTO) => order.pickupDate || '9999-12-31';
 
   return orders.map(toOrderDTO).sort((a, b) => {
     if (rank(a) !== rank(b)) return rank(a) - rank(b);
-    if (rank(a) === 0) return a.pickupDate.localeCompare(b.pickupDate) || a.number - b.number;
+    if (rank(a) === 0) return day(a).localeCompare(day(b)) || a.number - b.number;
     return b.createdAt.localeCompare(a.createdAt);
   });
 }
 
-/** Marks a paid order handed over, or undoes that. */
+/** Marks a confirmed order handed over, or undoes that. */
 export async function setFulfilled(orderId: string, fulfilled: boolean): Promise<OrderDTO | null> {
   if (!isValidObjectId(orderId)) return null;
   await dbConnect();
 
   const order = await Order.findOneAndUpdate(
-    { _id: orderId, status: 'paid' },
+    { _id: orderId, status: { $in: CONFIRMED } },
     { $set: { fulfilledAt: fulfilled ? new Date() : null } },
     { new: true },
   ).lean<LeanOrder | null>();

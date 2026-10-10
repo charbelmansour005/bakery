@@ -77,6 +77,9 @@ export const cartReplaceSchema = z.object({
 
 export type CartLineInput = z.infer<typeof cartLineInputSchema>;
 
+/** Keeps digits and a leading +; drops the spaces, dashes and brackets people type. */
+const stripPhone = (value: string) => value.replace(/(?!^\+)[^\d]/g, '');
+
 /**
  * What the customer fills in before paying. Deliberately no prices and no
  * items: the order is built from the server's copy of the cart. The one number
@@ -88,8 +91,7 @@ export const checkoutSchema = z.object({
     .string()
     .trim()
     .max(40)
-    // Keep digits and a leading +; drop the spaces, dashes and brackets people type.
-    .transform((value) => value.replace(/(?!^\+)[^\d]/g, ''))
+    .transform(stripPhone)
     .refine((value) => /^\+?\d{7,15}$/.test(value), 'Enter a phone number we can reach you on.'),
   pickupDate: z
     .string()
@@ -100,5 +102,35 @@ export const checkoutSchema = z.object({
 });
 
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
+
+/**
+ * A cash-on-delivery order. Everything but the total is optional: it can be
+ * placed in one tap from the order dialog, with the details worked out over
+ * WhatsApp. Whatever is given is held to the same rules as the checkout.
+ */
+export const cashOrderSchema = z.object({
+  phone: z
+    .string()
+    .trim()
+    .max(40)
+    // Blank is fine; anything typed must be a real number. Checked before the
+    // punctuation is stripped, so "call me" is refused rather than quietly
+    // becoming blank.
+    .refine(
+      (value) => value === '' || /^\+?\d{7,15}$/.test(stripPhone(value)),
+      'Enter a phone number we can reach you on.',
+    )
+    .transform(stripPhone)
+    .default(''),
+  pickupDate: z
+    .string()
+    .trim()
+    .refine((value) => value === '' || isValidPickupDate(value), 'Choose a pickup day from the ones offered.')
+    .default(''),
+  note: z.string().trim().max(300, 'Keep the note under 300 characters.').default(''),
+  expectedTotalCents: z.number().int().min(0).max(100_000_000),
+});
+
+export type CashOrderInput = z.infer<typeof cashOrderSchema>;
 
 export const orderFulfilSchema = z.object({ fulfilled: z.boolean() });

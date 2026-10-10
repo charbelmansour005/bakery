@@ -82,6 +82,11 @@ export default function AccountButton({
           </Link>
         </li>
         <li>
+          <Link href="/orders" onClick={onNavigate} className={row}>
+            My orders
+          </Link>
+        </li>
+        <li>
           <button type="button" onClick={signOut} disabled={busy} className={`${row} disabled:opacity-50`}>
             {busy ? 'Signing out…' : 'Sign out'}
           </button>
@@ -116,6 +121,9 @@ export default function AccountButton({
             {count}
           </span>
         )}
+      </Link>
+      <Link href="/orders" className={`eyebrow transition-colors ${tone}`}>
+        My orders
       </Link>
       <button
         type="button"

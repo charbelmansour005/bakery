@@ -1,5 +1,5 @@
 import mongoose, { Schema, type Model, type InferSchemaType } from 'mongoose';
-import { ORDER_MODES, ORDER_STATUSES } from '@/types/order';
+import { ORDER_MODES, ORDER_STATUSES, PAYMENT_METHODS } from '@/types/order';
 
 /**
  * An order is one attempt to pay for a cart.
@@ -9,6 +9,9 @@ import { ORDER_MODES, ORDER_STATUSES } from '@/types/order';
  * exactly one place — settleOrder() in lib/orders.ts — and only after Whish
  * itself confirms the payment. A customer who abandons the payment page leaves
  * a `pending` order behind; trying again makes a new one, with a new number.
+ *
+ * A cash-on-delivery order skips all of that: it is saved `placed`, with
+ * nothing to confirm, and paid for in person.
  *
  * Lines are a snapshot (names and prices), unlike the cart's product
  * references: an order records what was paid for, whatever the menu says later.
@@ -31,9 +34,11 @@ const orderSchema = new Schema(
     number: { type: Number, required: true, unique: true },
     customerId: { type: Schema.Types.ObjectId, ref: 'Customer', required: true },
     email: { type: String, required: true, trim: true, lowercase: true },
-    phone: { type: String, required: true, trim: true },
+    // Both may be empty on a cash order: the one-tap route has no form, and the
+    // details are settled in the WhatsApp chat instead.
+    phone: { type: String, default: '', trim: true },
     /** YYYY-MM-DD. A calendar day, so a string — a Date would drag a timezone in. */
-    pickupDate: { type: String, required: true },
+    pickupDate: { type: String, default: '' },
     note: { type: String, default: '', trim: true },
 
     lines: { type: [orderLineSchema], required: true },
@@ -41,6 +46,7 @@ const orderSchema = new Schema(
     currency: { type: String, required: true, default: 'USD' },
 
     status: { type: String, enum: ORDER_STATUSES, required: true, default: 'pending' },
+    paymentMethod: { type: String, enum: PAYMENT_METHODS, required: true, default: 'whish' },
     /** Sandbox and live orders share a database; this keeps them apart. */
     mode: { type: String, enum: ORDER_MODES, required: true },
 
