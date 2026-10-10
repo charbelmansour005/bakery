@@ -12,7 +12,10 @@
     "lint": "eslint",
     "seed": "tsx scripts/seed.ts",
     "whish:check": "tsx scripts/whish-check.ts",
-    "whish:mock": "tsx scripts/whish-mock.ts"
+    "whish:mock": "tsx scripts/whish-mock.ts",
+    "test:e2e": "E2E_WHISH=off playwright test && E2E_WHISH=on playwright test",
+    "test:e2e:off": "E2E_WHISH=off playwright test",
+    "test:e2e:on": "E2E_WHISH=on playwright test"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.0",
@@ -27,6 +30,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "^1.64.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/nodemailer": "^8.0.2",

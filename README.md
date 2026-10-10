@@ -349,7 +349,32 @@ the CMS or drop a file over the existing name:
 | `npm run seed` | Seed products + admin (idempotent) |
 | `npm run whish:check` | Smoke-test the Whish credentials in `.env.local` |
 | `npm run whish:mock` | Local stand-in for Whish, for development |
+| `npm run test:e2e` | End-to-end tests (Playwright), both with and without payments |
 | `npm run lint` | ESLint |
+
+---
+
+## Tests
+
+```bash
+npm run test:e2e
+```
+
+End-to-end tests in `e2e/`, driven by Playwright in the Chrome installed on the
+machine. They start their own dev server on port 3100 and never touch the live
+site; Whish is always the local mock. Stop `npm run dev` first — two dev servers
+cannot share one `.next` folder.
+
+Whether online payment is on is decided when the server starts, so the suite
+runs twice: once with the Whish variables blank (the "Coming soon" site) and
+once pointed at the mock (the full payment flow, including a declined payment, a
+lost callback, a duplicate callback and a forged one). `test:e2e:off` and
+`test:e2e:on` run one pass each.
+
+The tests use the real database, because local development and production share
+one. Everything they create belongs to customers under `@e2e.labellefournee.test`
+and is deleted before and after each run; they read the menu but never change
+it, and they open the CMS without saving anything.
 
 ---
 
