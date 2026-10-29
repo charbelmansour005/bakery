@@ -75,9 +75,10 @@ export default defineConfig({
             WHISH_WEBSITE_URL: 'localhost',
             ORDER_NOTIFY_EMAIL: 'bakery@example.test',
             SITE_URL: '',
+            WHISH_MODE: 'test',
           }
         : // Explicitly blank, in case .env.local has real credentials by now.
-          { WHISH_BASE_URL: '', WHISH_CHANNEL: '', WHISH_SECRET: '', WHISH_WEBSITE_URL: '' },
+          { WHISH_BASE_URL: '', WHISH_CHANNEL: '', WHISH_SECRET: '', WHISH_WEBSITE_URL: '', WHISH_MODE: '' },
     },
   ],
 });

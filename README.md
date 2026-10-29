@@ -267,10 +267,13 @@ receipt, and the bakery gets a notification email.
 
 ### Sandbox and live
 
-They differ only by the four `WHISH_*` values. Orders are tagged `test` or
-`live` from `WHISH_BASE_URL` (a host containing `sandbox`, or `localhost`, is
-test), and `/admin/orders` lists only the current mode — worth knowing because
-local development and production share one database.
+They differ only by the four `WHISH_*` values plus `WHISH_MODE`. Orders are
+tagged `test` or `live`: from `WHISH_MODE` when it is set, otherwise guessed from
+`WHISH_BASE_URL` (a host containing `sandbox`, or `localhost`, is test).
+`/admin/orders` lists only the current mode, which matters because local
+development, a test deployment and production all share one database. Whish's
+test host need not contain "sandbox", so **always set `WHISH_MODE=test` wherever
+you use the test credentials.**
 
 ### Checking credentials
 

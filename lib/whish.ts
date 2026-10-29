@@ -2,7 +2,7 @@ import 'server-only';
 import {
   createPayment as createPaymentWith,
   getPaymentStatus as getPaymentStatusWith,
-  modeOf,
+  resolveMode,
   type CreatePaymentInput,
   type PaymentStatus,
   type WhishConfig,
@@ -42,10 +42,13 @@ export function isWhishConfigured(): boolean {
   return readConfig() !== null;
 }
 
-/** `live` when unconfigured, so nothing is ever mistaken for a test order by default. */
+/**
+ * `test` or `live`, from WHISH_MODE when set and from the base URL otherwise.
+ * `live` when unconfigured, so nothing is ever mistaken for a test order by default.
+ */
 export function whishMode(): WhishMode {
   const config = readConfig();
-  return config ? modeOf(config.baseUrl) : 'live';
+  return config ? resolveMode(config.baseUrl, process.env.WHISH_MODE) : 'live';
 }
 
 export async function createPayment(input: CreatePaymentInput): Promise<string> {

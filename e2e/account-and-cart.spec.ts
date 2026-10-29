@@ -8,7 +8,8 @@ test.describe('signing in with an emailed code', () => {
 
     await page.locator('#email').fill(email);
     await page.getByRole('button', { name: /send me a code/i }).click();
-    await expect(page.getByText(`We sent a 6-digit code to ${email}.`)).toBeVisible();
+    // First test of a run: the dev server is still compiling pages cold.
+    await expect(page.getByText(`We sent a 6-digit code to ${email}.`)).toBeVisible({ timeout: 40_000 });
 
     await plantSignInCode(email, '424242');
 

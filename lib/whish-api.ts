@@ -59,7 +59,11 @@ export class WhishError extends Error {
   }
 }
 
-/** Sandbox and local stand-ins are test; everything else moves real money. */
+/**
+ * Which environment a base URL belongs to — a guess from its name. Whish's test
+ * host need not say "sandbox", so a deployment states it outright with
+ * WHISH_MODE; see resolveMode().
+ */
 export function modeOf(baseUrl: string): WhishMode {
   try {
     const { hostname } = new URL(baseUrl);
@@ -70,6 +74,17 @@ export function modeOf(baseUrl: string): WhishMode {
   } catch {
     return 'test';
   }
+}
+
+/**
+ * The mode orders are tagged with. An explicit `override` (WHISH_MODE) wins;
+ * only without one is it inferred from the URL. Getting this wrong is not
+ * cosmetic: test orders tagged `live` would appear among the bakery's real ones.
+ */
+export function resolveMode(baseUrl: string, override?: string): WhishMode {
+  const forced = override?.trim().toLowerCase();
+  if (forced === 'test' || forced === 'live') return forced;
+  return modeOf(baseUrl);
 }
 
 type Envelope = {

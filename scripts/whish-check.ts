@@ -25,7 +25,7 @@ import {
   WhishError,
   createPayment,
   getPaymentStatus,
-  modeOf,
+  resolveMode,
   whishRequest,
   type WhishConfig,
 } from '../lib/whish-api';
@@ -72,7 +72,7 @@ async function main() {
 
   console.log('Whish smoke test');
   console.log(`  base URL     ${whish.baseUrl}`);
-  console.log(`  mode         ${modeOf(whish.baseUrl)}`);
+  console.log(`  mode         ${resolveMode(whish.baseUrl, process.env.WHISH_MODE)}`);
   console.log(`  website URL  ${whish.websiteUrl}`);
   console.log(`  channel      set (${whish.channel.length} characters)`);
   console.log(`  secret       set (${whish.secret.length} characters)`);
