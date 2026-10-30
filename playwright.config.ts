@@ -20,8 +20,10 @@ loadEnv({ path: path.join(__dirname, '.env.local') });
  * cannot share one .next folder.
  */
 const whishOn = process.env.E2E_WHISH === 'on';
-const PORT = 3100;
-const MOCK_PORT = 4010;
+// Off the usual development ports (3000-3100), where another project's dev
+// server is likely to be sitting. Override with E2E_PORT / E2E_MOCK_PORT.
+const PORT = Number(process.env.E2E_PORT ?? 3217);
+const MOCK_PORT = Number(process.env.E2E_MOCK_PORT ?? 4217);
 const NODE = 'source "$HOME/.nvm/nvm.sh" 2>/dev/null; nvm use 22 >/dev/null 2>&1;';
 
 export default defineConfig({

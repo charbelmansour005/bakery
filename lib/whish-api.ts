@@ -60,13 +60,24 @@ export class WhishError extends Error {
 }
 
 /**
+ * A base URL as a person types it into a settings page: a missing `https://`
+ * and trailing slashes are tolerated. Without this, a scheme-less value makes
+ * every request fail before it leaves the server, with a message that points
+ * nowhere near the cause.
+ */
+export function normaliseBaseUrl(value: string): string {
+  const trimmed = value.trim().replace(/\/+$/, '');
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
+/**
  * Which environment a base URL belongs to — a guess from its name. Whish's test
  * host need not say "sandbox", so a deployment states it outright with
  * WHISH_MODE; see resolveMode().
  */
 export function modeOf(baseUrl: string): WhishMode {
   try {
-    const { hostname } = new URL(baseUrl);
+    const { hostname } = new URL(normaliseBaseUrl(baseUrl));
     if (hostname.includes('sandbox') || hostname === 'localhost' || hostname === '127.0.0.1') {
       return 'test';
     }
@@ -120,7 +131,7 @@ export async function whishRequest(
   path: string,
   body?: unknown,
 ): Promise<Envelope> {
-  const url = `${config.baseUrl.replace(/\/+$/, '')}/${path}`;
+  const url = `${normaliseBaseUrl(config.baseUrl)}/${path}`;
 
   let response: Response;
   try {
@@ -139,7 +150,12 @@ export async function whishRequest(
     });
   } catch (err) {
     const timedOut = err instanceof Error && err.name === 'TimeoutError';
-    throw new WhishError(timedOut ? 'Whish did not respond in time.' : 'Could not reach Whish.');
+    // Node reports "fetch failed" and keeps the real reason (DNS, TLS, a bad
+    // URL) in `cause`. It is stored on the order, never shown to the customer.
+    const cause = err instanceof Error ? ((err.cause as Error | undefined)?.message ?? err.message) : '';
+    throw new WhishError(
+      timedOut ? 'Whish did not respond in time.' : `Could not reach Whish${cause ? ` (${cause})` : ''}.`,
+    );
   }
 
   const text = await response.text();

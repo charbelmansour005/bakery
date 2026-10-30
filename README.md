@@ -383,7 +383,7 @@ npm run test:e2e
 ```
 
 End-to-end tests in `e2e/`, driven by Playwright in the Chrome installed on the
-machine. They start their own dev server on port 3100 and never touch the live
+machine. They start their own dev server on port 3217 (`E2E_PORT` changes it) and never touch the live
 site; Whish is always the local mock. Stop `npm run dev` first — two dev servers
 cannot share one `.next` folder.
 

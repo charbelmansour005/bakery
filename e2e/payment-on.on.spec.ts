@@ -7,7 +7,7 @@ import { dollars, earliestPickup, expect, pickupInDays, signInAsAdmin, test } fr
  * page has one link per outcome; these tests press them.
  */
 
-const MOCK = 'http://localhost:4010';
+const MOCK = `http://localhost:${process.env.E2E_MOCK_PORT ?? 4217}`;
 
 async function fillCheckout(page: Page, phone = '71 123 456', note = '') {
   await page.locator('#checkout-phone').fill(phone);
