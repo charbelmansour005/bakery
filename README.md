@@ -86,6 +86,16 @@ day and pays (see [Payments](#payments)). Until Whish is configured, the dialog
 shows it as "Coming soon" and cash on delivery is the only choice that can be
 taken.
 
+The hero plays a short sourdough story as the visitor scrolls through it: a
+starter jar that bubbles and rises, dough gathering into a loaf, then the loaf
+scored, baked and steaming, beside the headline line for each stage. It is drawn
+in code (`components/site/DoughScene.tsx`, no video or image files) and driven by
+scroll position (`HeroScroll.tsx` writes `--p1`..`--p3` onto the hero; the rules
+are in `globals.css`). The CMS still controls the background photo and the
+headline text — the stages spread across however many headline lines there are.
+Visitors who ask for reduced motion get an ordinary hero showing the finished
+loaf.
+
 Signed-in customers find everything they have ordered under "My orders" in the
 nav (`/orders`): orders paid online and cash orders alike, each opening its own
 page.
