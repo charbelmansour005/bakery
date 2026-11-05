@@ -37,7 +37,7 @@ export default function ReviewOrderDialog({
   paymentsEnabled: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
-  const { lines, totalCents } = useCart();
+  const { count, totalCents } = useCart();
   const { place, placing, error } = useCashOrder();
 
   useEffect(() => {
@@ -77,7 +77,7 @@ export default function ReviewOrderDialog({
             How would you like to order?
           </h2>
           <p className="mt-2 font-display text-base italic text-walnut-400">
-            {lines.length} item{lines.length === 1 ? '' : 's'} · {formatCents(totalCents)}
+            {count} item{count === 1 ? '' : 's'} · {formatCents(totalCents)}
           </p>
         </div>
 

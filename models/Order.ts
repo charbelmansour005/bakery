@@ -18,11 +18,20 @@ import { ORDER_MODES, ORDER_STATUSES, PAYMENT_METHODS } from '@/types/order';
  */
 const orderLineSchema = new Schema(
   {
+    /** Absent on orders placed before crackers existed; those are all loaves. */
+    kind: { type: String, enum: ['loaf', 'cracker'], default: 'loaf' },
     key: { type: String, required: true },
-    baseName: { type: String, required: true },
-    basePriceCents: { type: Number, required: true },
+    // A loaf, with an optional topping.
+    baseName: { type: String, default: '' },
+    basePriceCents: { type: Number, default: 0 },
     addOnName: { type: String, default: null },
     addOnPriceCents: { type: Number, default: 0 },
+    // A cracker pack.
+    packName: { type: String, default: '' },
+    grams: { type: Number, default: 0 },
+    flavorNames: { type: [String], default: undefined },
+    quantity: { type: Number, default: 1 },
+    unitPriceCents: { type: Number, default: 0 },
     totalCents: { type: Number, required: true },
   },
   { _id: false },

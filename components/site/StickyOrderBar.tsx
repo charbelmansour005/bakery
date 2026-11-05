@@ -14,7 +14,7 @@ import ReviewOrderDialog from './ReviewOrderDialog';
  * fill — there is no half-built state to guard against before handing off.
  */
 export default function StickyOrderBar({ paymentsEnabled = false }: { paymentsEnabled?: boolean }) {
-  const { lines, isEmpty, totalCents, removeLine, clear, error } = useCart();
+  const { lines, crackers, isEmpty, totalCents, removeLine, clear, error } = useCart();
   const [reviewing, setReviewing] = useState(false);
 
   if (isEmpty) return null;
@@ -32,15 +32,23 @@ export default function StickyOrderBar({ paymentsEnabled = false }: { paymentsEn
 
             <div className="flex flex-wrap items-center gap-2.5">
               <span className="eyebrow shrink-0 text-walnut-400">Your order</span>
-              {lines.map((line) => {
-                const label = line.addOn
-                  ? `${line.addOn.name} · ${line.base.name}`
-                  : `${line.base.name} · plain`;
+              {[
+                ...lines.map((line) => ({
+                  key: line.key,
+                  label: line.addOn ? `${line.addOn.name} · ${line.base.name}` : `${line.base.name} · plain`,
+                })),
+                ...crackers.map((line) => ({
+                  key: line.key,
+                  label: `${line.pack.name} · ${line.flavors.map((flavor) => flavor.name).join(', ')}${
+                    line.quantity > 1 ? ` × ${line.quantity}` : ''
+                  }`,
+                })),
+              ].map(({ key, label }) => {
                 return (
                   <button
-                    key={line.key}
+                    key={key}
                     type="button"
-                    onClick={() => removeLine(line.key)}
+                    onClick={() => removeLine(key)}
                     aria-label={`Remove ${label}`}
                     className="group flex items-center gap-1.5 rounded-full border border-walnut/25 px-3 py-1 text-xs text-walnut transition hover:border-walnut hover:bg-walnut/5"
                   >

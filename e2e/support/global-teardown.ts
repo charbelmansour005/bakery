@@ -1,10 +1,7 @@
-import { disconnect, removeTestData } from './db';
+import { disconnect, dropTestDatabase } from './db';
 
 export default async function globalTeardown() {
-  const removed = await removeTestData();
+  await dropTestDatabase();
   await disconnect();
-  console.log(
-    `\nTest data removed: ${removed.customers} customers, ${removed.orders} orders, ` +
-      `${removed.carts} carts, ${removed.codes} sign-in codes.`,
-  );
+  console.log('\nTest database emptied.');
 }

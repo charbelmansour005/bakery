@@ -2,8 +2,18 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import type { CrackerPackDTO } from '@/types/cracker';
+import { MAX_PACK_QUANTITY } from '@/types/cracker';
 import type { ProductDTO } from '@/types/product';
-import { makeLine, totalOf, type CartDTO, type CartLineDTO } from '@/types/cart';
+import {
+  crackerKey,
+  makeCrackerLine,
+  makeLine,
+  totalOf,
+  type CartDTO,
+  type CartLineDTO,
+  type CrackerLineDTO,
+} from '@/types/cart';
 
 /**
  * The cart lives on the server, one per customer, so it survives a reload and
@@ -15,13 +25,24 @@ import { makeLine, totalOf, type CartDTO, type CartLineDTO } from '@/types/cart'
  * topping appears at most once, and so does each plain loaf; the helpers below
  * keep it that way by construction, and lib/cart.ts enforces it again.
  *
+ * Cracker packs sit beside the loaves in the same cart: a size, the flavors mixed
+ * into it, and a quantity. The same pack with the same flavors is one line whose
+ * quantity goes up.
+ *
+ * Every write sends both — the loaves and the packs — because the server
+ * replaces the whole cart. Sending one without the other would erase it.
+ *
  * Ordering requires an account, so a tap while signed out sends the customer to
  * sign in rather than quietly dropping the item.
  */
 
+type Contents = { lines: CartLineDTO[]; crackers: CrackerLineDTO[] };
+
 type CartState = {
   signedIn: boolean;
   lines: CartLineDTO[];
+  crackers: CrackerLineDTO[];
+  /** Loaves, plus every pack counted by its quantity. */
   count: number;
   isEmpty: boolean;
   totalCents: number;
@@ -32,6 +53,10 @@ type CartState = {
   setToppingLoaf: (addOn: ProductDTO, base: ProductDTO) => void;
   togglePlain: (base: ProductDTO) => void;
   removeLine: (key: string) => void;
+  /** Adds a pack with these flavors — or one more of it, if it is already in the order. */
+  addCrackerPack: (pack: CrackerPackDTO, flavors: ProductDTO[]) => void;
+  /** 0 or less removes the pack. */
+  setCrackerQuantity: (key: string, quantity: number) => void;
   clear: () => void;
   /** Re-reads the cart from the server — after a payment has emptied it there. */
   refresh: () => Promise<void>;
@@ -41,10 +66,20 @@ type CartState = {
 
 const CartContext = createContext<CartState | null>(null);
 
-function toPayload(lines: CartLineDTO[]) {
+function toPayload({ lines, crackers }: Contents) {
   return {
     lines: lines.map((line) => ({ baseId: line.base.id, addOnId: line.addOn?.id ?? null })),
+    crackers: crackers.map((line) => ({
+      packId: line.pack.id,
+      flavorIds: line.flavors.map((flavor) => flavor.id),
+      quantity: line.quantity,
+    })),
   };
+}
+
+/** What the server answered, as the provider holds it. */
+function contentsOf(cart: CartDTO): Contents {
+  return { lines: cart.lines, crackers: cart.crackers ?? [] };
 }
 
 export function CartProvider({
@@ -59,7 +94,8 @@ export function CartProvider({
   const router = useRouter();
   const pathname = usePathname();
 
-  const [lines, setLines] = useState<CartLineDTO[]>(initialCart.lines);
+  const [contents, setContents] = useState<Contents>(() => contentsOf(initialCart));
+  const { lines, crackers } = contents;
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,10 +103,10 @@ export function CartProvider({
    * Mutations derive from this ref rather than from the render closure, so two
    * taps that land before a re-render still build on each other.
    */
-  const linesRef = useRef(lines);
-  const commit = useCallback((next: CartLineDTO[]) => {
-    linesRef.current = next;
-    setLines(next);
+  const contentsRef = useRef(contents);
+  const commit = useCallback((next: Contents) => {
+    contentsRef.current = next;
+    setContents(next);
   }, []);
 
   /** Bumped on every local change, so a slow server read can tell it is stale. */
@@ -94,7 +130,7 @@ export function CartProvider({
     fetch('/api/cart')
       .then((response) => (response.ok ? response.json() : null))
       .then((data: { cart?: CartDTO } | null) => {
-        if (!cancelled && data?.cart && generation.current === startedAt) commit(data.cart.lines);
+        if (!cancelled && data?.cart && generation.current === startedAt) commit(contentsOf(data.cart));
       })
       .catch(() => {});
 
@@ -115,11 +151,11 @@ export function CartProvider({
     const response = await fetch('/api/cart').catch(() => null);
     if (!response?.ok) return;
     const data = (await response.json().catch(() => null)) as { cart?: CartDTO } | null;
-    if (data?.cart) commit(data.cart.lines);
+    if (data?.cart) commit(contentsOf(data.cart));
   }, [commit]);
 
   const persist = useCallback(
-    (next: CartLineDTO[], rollback: () => void) => {
+    (next: Contents, rollback: () => void) => {
       setPending(true);
       setError(null);
 
@@ -164,9 +200,9 @@ export function CartProvider({
   }, [signedIn, router, pathname]);
 
   const mutate = useCallback(
-    (transform: (current: CartLineDTO[]) => CartLineDTO[]) => {
+    (transform: (current: Contents) => Contents) => {
       if (!ensureSignedIn()) return;
-      const previous = linesRef.current;
+      const previous = contentsRef.current;
       const next = transform(previous);
       if (next === previous) return;
       generation.current += 1;
@@ -176,9 +212,19 @@ export function CartProvider({
     [ensureSignedIn, commit, persist],
   );
 
+  /** A change to the loaves only; the packs ride along untouched. */
+  const mutateLines = useCallback(
+    (transform: (current: CartLineDTO[]) => CartLineDTO[]) =>
+      mutate((current) => {
+        const next = transform(current.lines);
+        return next === current.lines ? current : { ...current, lines: next };
+      }),
+    [mutate],
+  );
+
   const setToppingLoaf = useCallback(
     (addOn: ProductDTO, base: ProductDTO) =>
-      mutate((current) => {
+      mutateLines((current) => {
         const index = current.findIndex((line) => line.addOn?.id === addOn.id);
         if (index === -1) return [...current, makeLine(base, addOn)];
         if (current[index].base.id === base.id) return current;
@@ -187,26 +233,79 @@ export function CartProvider({
         next[index] = makeLine(base, addOn);
         return next;
       }),
-    [mutate],
+    [mutateLines],
   );
 
   const togglePlain = useCallback(
     (base: ProductDTO) =>
-      mutate((current) =>
+      mutateLines((current) =>
         current.some((line) => !line.addOn && line.base.id === base.id)
           ? current.filter((line) => !(!line.addOn && line.base.id === base.id))
           : [...current, makeLine(base, null)],
       ),
+    [mutateLines],
+  );
+
+  /** Removes a loaf line or a pack, whichever the key belongs to. */
+  const removeLine = useCallback(
+    (key: string) =>
+      mutate((current) => {
+        const lines = current.lines.filter((line) => line.key !== key);
+        const crackers = current.crackers.filter((line) => line.key !== key);
+        return lines.length === current.lines.length && crackers.length === current.crackers.length
+          ? current
+          : { lines, crackers };
+      }),
     [mutate],
   );
 
-  const removeLine = useCallback(
-    (key: string) => mutate((current) => current.filter((line) => line.key !== key)),
+  const addCrackerPack = useCallback(
+    (pack: CrackerPackDTO, flavors: ProductDTO[]) =>
+      mutate((current) => {
+        if (flavors.length === 0) return current;
+        const key = crackerKey(
+          pack.id,
+          flavors.map((flavor) => flavor.id),
+        );
+        const index = current.crackers.findIndex((line) => line.key === key);
+        if (index === -1) {
+          // Flavors kept in menu order, as the server returns them, so the
+          // optimistic line reads the same as the saved one.
+          const ordered = [...flavors].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+          return { ...current, crackers: [...current.crackers, makeCrackerLine(pack, ordered, 1)] };
+        }
+        const existing = current.crackers[index];
+        if (existing.quantity >= MAX_PACK_QUANTITY) return current;
+        const crackers = current.crackers.slice();
+        crackers[index] = makeCrackerLine(existing.pack, existing.flavors, existing.quantity + 1);
+        return { ...current, crackers };
+      }),
+    [mutate],
+  );
+
+  const setCrackerQuantity = useCallback(
+    (key: string, quantity: number) =>
+      mutate((current) => {
+        const index = current.crackers.findIndex((line) => line.key === key);
+        if (index === -1) return current;
+        if (quantity <= 0) {
+          return { ...current, crackers: current.crackers.filter((line) => line.key !== key) };
+        }
+        const capped = Math.min(MAX_PACK_QUANTITY, Math.floor(quantity));
+        const existing = current.crackers[index];
+        if (capped === existing.quantity) return current;
+        const crackers = current.crackers.slice();
+        crackers[index] = makeCrackerLine(existing.pack, existing.flavors, capped);
+        return { ...current, crackers };
+      }),
     [mutate],
   );
 
   const clear = useCallback(
-    () => mutate((current) => (current.length === 0 ? current : [])),
+    () =>
+      mutate((current) =>
+        current.lines.length === 0 && current.crackers.length === 0 ? current : { lines: [], crackers: [] },
+      ),
     [mutate],
   );
 
@@ -214,20 +313,36 @@ export function CartProvider({
     () => ({
       signedIn,
       lines,
-      count: lines.length,
-      isEmpty: lines.length === 0,
-      totalCents: totalOf(lines),
+      crackers,
+      count: lines.length + crackers.reduce((sum, line) => sum + line.quantity, 0),
+      isEmpty: lines.length === 0 && crackers.length === 0,
+      totalCents: totalOf(lines, crackers),
       lineForAddOn: (addOnId: string) => lines.find((line) => line.addOn?.id === addOnId),
       hasPlain: (baseId: string) => lines.some((line) => !line.addOn && line.base.id === baseId),
       setToppingLoaf,
       togglePlain,
       removeLine,
+      addCrackerPack,
+      setCrackerQuantity,
       clear,
       refresh: resync,
       pending,
       error,
     }),
-    [signedIn, lines, setToppingLoaf, togglePlain, removeLine, clear, resync, pending, error],
+    [
+      signedIn,
+      lines,
+      crackers,
+      setToppingLoaf,
+      togglePlain,
+      removeLine,
+      addCrackerPack,
+      setCrackerQuantity,
+      clear,
+      resync,
+      pending,
+      error,
+    ],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

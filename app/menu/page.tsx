@@ -4,6 +4,7 @@ import MenuBrowser from '@/components/site/MenuBrowser';
 import SectionDivider from '@/components/site/SectionDivider';
 import SiteNav from '@/components/site/SiteNav';
 import StickyOrderBar from '@/components/site/StickyOrderBar';
+import { getCrackerPacks } from '@/lib/crackers';
 import { getProducts, groupByCategory } from '@/lib/products';
 import { isWhishConfigured } from '@/lib/whish';
 
@@ -15,8 +16,8 @@ export const metadata = {
 };
 
 export default async function MenuPage() {
-  const products = await getProducts();
-  const { base, savory, sweet } = groupByCategory(products);
+  const [products, packs] = await Promise.all([getProducts(), getCrackerPacks()]);
+  const { base, savory, sweet, crackers } = groupByCategory(products);
 
   return (
     <>
@@ -34,7 +35,7 @@ export default async function MenuPage() {
           </div>
         </div>
 
-        <MenuBrowser base={base} savory={savory} sweet={sweet} />
+        <MenuBrowser base={base} savory={savory} sweet={sweet} crackers={crackers} packs={packs} />
 
         <IdeaBanner />
       </main>

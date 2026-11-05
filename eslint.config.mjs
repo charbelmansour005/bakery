@@ -18,6 +18,9 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      // Playwright output: generated bundles and traces, not project code.
+      "playwright-report/**",
+      "test-results/**",
     ],
   },
 ];

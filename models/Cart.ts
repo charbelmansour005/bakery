@@ -25,10 +25,25 @@ const cartLineSchema = new Schema(
   { _id: false },
 );
 
+/**
+ * A cracker pack: a size, the flavors mixed into it, and how many. Kept apart
+ * from `lines` because it follows different rules — packs have quantities,
+ * loaves do not.
+ */
+const crackerLineSchema = new Schema(
+  {
+    pack: { type: Schema.Types.ObjectId, ref: 'CrackerPack', required: true },
+    flavors: { type: [{ type: Schema.Types.ObjectId, ref: 'Product' }], required: true },
+    quantity: { type: Number, required: true, min: 1 },
+  },
+  { _id: false },
+);
+
 const cartSchema = new Schema(
   {
     customerId: { type: Schema.Types.ObjectId, ref: 'Customer', required: true, unique: true },
     lines: { type: [cartLineSchema], default: [] },
+    crackers: { type: [crackerLineSchema], default: [] },
   },
   { timestamps: true },
 );

@@ -71,11 +71,30 @@ const cartLineInputSchema = z.object({
     .transform((value) => value || null),
 });
 
+const crackerLineInputSchema = z.object({
+  packId: z.string().trim().min(1).max(64),
+  flavorIds: z.array(z.string().trim().min(1).max(64)).min(1, 'Choose at least one flavor.').max(12),
+  quantity: z.number().int().min(1, 'A pack needs a quantity of at least 1.').max(20, 'At most 20 of one pack.'),
+});
+
 export const cartReplaceSchema = z.object({
   lines: z.array(cartLineInputSchema).max(30).default([]),
+  crackers: z.array(crackerLineInputSchema).max(30).default([]),
 });
 
 export type CartLineInput = z.infer<typeof cartLineInputSchema>;
+export type CrackerLineInput = z.infer<typeof crackerLineInputSchema>;
+
+/** A pack size, as edited at /admin/crackers. Prices are integer cents. */
+export const crackerPackUpdateSchema = z
+  .object({
+    name: z.string().trim().min(1, 'The pack needs a name.').max(60),
+    grams: z.number().int().min(1).max(10_000),
+    price: z.number().int('Price must be whole cents').min(0).max(1_000_000),
+    maxFlavors: z.number().int().min(1, 'A pack holds at least one flavor.').max(12),
+    sortOrder: z.number().int().min(0).max(9999),
+  })
+  .partial();
 
 /** Keeps digits and a leading +; drops the spaces, dashes and brackets people type. */
 const stripPhone = (value: string) => value.replace(/(?!^\+)[^\d]/g, '');

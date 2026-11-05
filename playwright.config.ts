@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 import { config as loadEnv } from 'dotenv';
 import path from 'node:path';
+import { testDatabaseUri } from './e2e/support/test-db';
 
 // The tests talk to MongoDB and sign session cookies themselves, so they need
 // the same values the dev server reads.
@@ -18,6 +19,9 @@ loadEnv({ path: path.join(__dirname, '.env.local') });
  *
  * `npm run test:e2e` runs both. Stop `npm run dev` first: two dev servers
  * cannot share one .next folder.
+ *
+ * The server under test uses its own database (bakery_e2e, see
+ * e2e/support/test-db.ts), wiped and seeded for every run.
  */
 const whishOn = process.env.E2E_WHISH === 'on';
 // Off the usual development ports (3000-3100), where another project's dev
@@ -71,6 +75,7 @@ export default defineConfig({
       timeout: 120_000,
       env: whishOn
         ? {
+            MONGODB_URI: testDatabaseUri(),
             WHISH_BASE_URL: `http://localhost:${MOCK_PORT}`,
             WHISH_CHANNEL: 'mock',
             WHISH_SECRET: 'mock',
@@ -80,7 +85,14 @@ export default defineConfig({
             WHISH_MODE: 'test',
           }
         : // Explicitly blank, in case .env.local has real credentials by now.
-          { WHISH_BASE_URL: '', WHISH_CHANNEL: '', WHISH_SECRET: '', WHISH_WEBSITE_URL: '', WHISH_MODE: '' },
+          {
+            MONGODB_URI: testDatabaseUri(),
+            WHISH_BASE_URL: '',
+            WHISH_CHANNEL: '',
+            WHISH_SECRET: '',
+            WHISH_WEBSITE_URL: '',
+            WHISH_MODE: '',
+          },
     },
   ],
 });

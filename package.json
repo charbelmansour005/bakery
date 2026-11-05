@@ -13,6 +13,7 @@
     "seed": "tsx scripts/seed.ts",
     "whish:check": "tsx scripts/whish-check.ts",
     "whish:mock": "tsx scripts/whish-mock.ts",
+    "dev:preview": "tsx scripts/dev-preview.ts",
     "test:e2e": "E2E_WHISH=off playwright test && E2E_WHISH=on playwright test",
     "test:e2e:off": "E2E_WHISH=off playwright test",
     "test:e2e:on": "E2E_WHISH=on playwright test"

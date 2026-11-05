@@ -32,6 +32,9 @@ function extraLines(extras: { pickupDate?: string; note?: string }): string[] {
  *   - Classic $4 (plain)
  */
 export function describeOrderLine(line: OrderLineDTO): string {
+  if (line.kind === 'cracker') {
+    return `- ${line.packName} ${line.grams}g (${line.flavorNames.join(' + ')}) × ${line.quantity} = ${formatCents(line.totalCents)}`;
+  }
   const loaf = `${line.baseName} ${formatCents(line.basePriceCents, { compact: true })}`;
   if (!line.addOnName) return `- ${loaf} (plain)`;
   return `- ${line.addOnName} ${formatCents(line.addOnPriceCents)} + ${loaf} = ${formatCents(line.totalCents)}`;

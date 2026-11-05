@@ -5,6 +5,7 @@ export const FILTERS = [
   { key: 'base', label: 'Base Loaves' },
   { key: 'savory', label: 'Savory' },
   { key: 'sweet', label: 'Sweet' },
+  { key: 'crackers', label: 'Crackers' },
 ] as const;
 
 export type FilterKey = (typeof FILTERS)[number]['key'];

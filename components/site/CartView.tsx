@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useCart } from '@/lib/cart-context';
 import { formatCents } from '@/lib/money';
 import { formatPickupDate, type PickupWindow } from '@/lib/pickup';
+import { MAX_PACK_QUANTITY, packLabel } from '@/types/cracker';
 import { useSignOut } from '@/lib/use-sign-out';
 import { useCashOrder } from '@/lib/use-cash-order';
 import { DeliveryIcon, WhishLogo } from './PaymentMarks';
@@ -40,7 +41,7 @@ export default function CartView({
   lastPhone: string;
 }) {
   const router = useRouter();
-  const { lines, isEmpty, totalCents, removeLine, refresh, pending, error } = useCart();
+  const { lines, crackers, isEmpty, totalCents, removeLine, setCrackerQuantity, refresh, pending, error } = useCart();
   const { signOut, busy: signingOut } = useSignOut();
 
   const [phone, setPhone] = useState(lastPhone);
@@ -135,6 +136,60 @@ export default function CartView({
                   </div>
                 </li>
               ))}
+              {crackers.map((line) => {
+                const title = `${packLabel(line.pack)}`;
+                const flavors = line.flavors.map((flavor) => flavor.name).join(', ');
+                return (
+                  <li key={line.key} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-4">
+                    <div className="min-w-0">
+                      <p className="font-display text-lg text-walnut">{title}</p>
+                      <p className="text-xs text-walnut-400">
+                        {flavors} · {formatCents(line.unitCents)} each
+                      </p>
+                    </div>
+
+                    <div className="flex shrink-0 items-center gap-2">
+                      <div
+                        role="group"
+                        aria-label={`Quantity of ${title}, ${flavors}`}
+                        className="flex items-center rounded-full border border-walnut/20"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setCrackerQuantity(line.key, line.quantity - 1)}
+                          aria-label="One fewer"
+                          className="flex h-8 w-8 items-center justify-center rounded-full text-walnut transition hover:bg-walnut/5"
+                        >
+                          −
+                        </button>
+                        <span className="min-w-6 text-center text-sm font-semibold text-walnut" aria-live="polite">
+                          {line.quantity}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setCrackerQuantity(line.key, line.quantity + 1)}
+                          disabled={line.quantity >= MAX_PACK_QUANTITY}
+                          aria-label="One more"
+                          className="flex h-8 w-8 items-center justify-center rounded-full text-walnut transition hover:bg-walnut/5 disabled:opacity-40"
+                        >
+                          +
+                        </button>
+                      </div>
+                      <span className="min-w-14 text-right font-display text-lg text-gold">{formatCents(line.totalCents)}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeLine(line.key)}
+                        aria-label={`Remove ${title}, ${flavors}`}
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-walnut-400 transition hover:bg-walnut/5 hover:text-walnut"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
+                          <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+                        </svg>
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
 
             <div className="mt-2 flex items-baseline justify-between border-t border-walnut/15 pt-4">

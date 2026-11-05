@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import type { CrackerPackDTO } from '@/types/cracker';
 import type { ProductDTO } from '@/types/product';
+import CrackerSection from './CrackerSection';
 import AddOnCard from './AddOnCard';
 import FilterTabs, { type FilterKey } from './FilterTabs';
 import ProductCard from './ProductCard';
@@ -28,10 +30,14 @@ export default function MenuBrowser({
   base,
   savory,
   sweet,
+  crackers,
+  packs,
 }: {
   base: ProductDTO[];
   savory: ProductDTO[];
   sweet: ProductDTO[];
+  crackers: ProductDTO[];
+  packs: CrackerPackDTO[];
 }) {
   const [filter, setFilter] = useState<FilterKey>('all');
 
@@ -39,6 +45,7 @@ export default function MenuBrowser({
   const showSavory = filter === 'all' || filter === 'savory';
   const showSweet = filter === 'all' || filter === 'sweet';
   const showAddOns = showSavory || showSweet;
+  const showCrackers = filter === 'all' || filter === 'crackers';
 
   return (
     <>
@@ -104,6 +111,16 @@ export default function MenuBrowser({
           </div>
         </section>
       )}
+      {showCrackers &&
+        (crackers.length > 0 && packs.length > 0 ? (
+          <CrackerSection flavors={crackers} packs={packs} />
+        ) : (
+          filter === 'crackers' && (
+            <section className="mx-auto max-w-6xl px-6 pb-16 lg:px-10">
+              <Empty what="crackers" />
+            </section>
+          )
+        ))}
     </>
   );
 }

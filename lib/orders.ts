@@ -54,6 +54,22 @@ export class OrderError extends Error {
   }
 }
 
+/** A line as stored: either kind, and possibly from before `kind` existed. */
+type StoredLine = {
+  kind?: 'loaf' | 'cracker';
+  key: string;
+  baseName?: string;
+  basePriceCents?: number;
+  addOnName?: string | null;
+  addOnPriceCents?: number;
+  packName?: string;
+  grams?: number;
+  flavorNames?: string[];
+  quantity?: number;
+  unitPriceCents?: number;
+  totalCents: number;
+};
+
 type LeanOrder = {
   _id: Types.ObjectId;
   number: number;
@@ -62,7 +78,7 @@ type LeanOrder = {
   phone: string;
   pickupDate: string;
   note?: string;
-  lines: OrderLineDTO[];
+  lines: StoredLine[];
   totalCents: number;
   status: OrderStatus;
   /** Absent on orders saved before cash orders existed; those were all Whish. */
@@ -88,18 +104,36 @@ function toOrderDTO(doc: LeanOrder): OrderDTO {
     payerPhone: doc.payerPhone ?? '',
     pickupDate: doc.pickupDate ?? '',
     note: doc.note ?? '',
-    lines: doc.lines.map((line) => ({
-      key: line.key,
-      baseName: line.baseName,
-      basePriceCents: line.basePriceCents,
-      addOnName: line.addOnName ?? null,
-      addOnPriceCents: line.addOnPriceCents ?? 0,
-      totalCents: line.totalCents,
-    })),
+    lines: doc.lines.map(toOrderLine),
     totalCents: doc.totalCents,
     createdAt: doc.createdAt.toISOString(),
     paidAt: doc.paidAt ? doc.paidAt.toISOString() : null,
     fulfilledAt: doc.fulfilledAt ? doc.fulfilledAt.toISOString() : null,
+  };
+}
+
+/** A stored line, whichever kind it is. Lines without `kind` predate crackers: loaves. */
+function toOrderLine(line: StoredLine): OrderLineDTO {
+  if (line.kind === 'cracker') {
+    return {
+      kind: 'cracker',
+      key: line.key,
+      packName: line.packName ?? '',
+      grams: line.grams ?? 0,
+      flavorNames: line.flavorNames ?? [],
+      quantity: line.quantity ?? 1,
+      unitPriceCents: line.unitPriceCents ?? 0,
+      totalCents: line.totalCents,
+    };
+  }
+  return {
+    kind: 'loaf',
+    key: line.key,
+    baseName: line.baseName ?? '',
+    basePriceCents: line.basePriceCents ?? 0,
+    addOnName: line.addOnName ?? null,
+    addOnPriceCents: line.addOnPriceCents ?? 0,
+    totalCents: line.totalCents,
   };
 }
 
@@ -151,14 +185,31 @@ async function cartForOrder(session: CustomerSession, expectedTotalCents: number
 
 /** The cart's lines as an order keeps them: names and prices, not references. */
 function snapshotLines(cart: CartDTO): OrderLineDTO[] {
-  return cart.lines.map((line) => ({
-    key: line.key,
-    baseName: line.base.name,
-    basePriceCents: line.base.price,
-    addOnName: line.addOn?.name ?? null,
-    addOnPriceCents: line.addOn?.price ?? 0,
-    totalCents: line.totalCents,
-  }));
+  return [
+    ...cart.lines.map(
+      (line): OrderLineDTO => ({
+        kind: 'loaf',
+        key: line.key,
+        baseName: line.base.name,
+        basePriceCents: line.base.price,
+        addOnName: line.addOn?.name ?? null,
+        addOnPriceCents: line.addOn?.price ?? 0,
+        totalCents: line.totalCents,
+      }),
+    ),
+    ...cart.crackers.map(
+      (line): OrderLineDTO => ({
+        kind: 'cracker',
+        key: line.key,
+        packName: line.pack.name,
+        grams: line.pack.grams,
+        flavorNames: line.flavors.map((flavor) => flavor.name),
+        quantity: line.quantity,
+        unitPriceCents: line.unitCents,
+        totalCents: line.totalCents,
+      }),
+    ),
+  ];
 }
 
 /**

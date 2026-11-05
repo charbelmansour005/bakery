@@ -20,6 +20,16 @@
       ],
       "port": 3000,
       "autoPort": true
+    },
+    {
+      "name": "bakery-preview-data",
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": [
+        "-lc",
+        "source \"$HOME/.nvm/nvm.sh\" && nvm use 22 >/dev/null && exec npm run dev:preview"
+      ],
+      "port": 3000,
+      "autoPort": true
     }
   ]
 }

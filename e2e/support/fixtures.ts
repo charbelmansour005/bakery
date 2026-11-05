@@ -4,7 +4,7 @@ import { createCustomer, menu, sessionCookie, type MenuItem, type TestCustomer }
 type Fixtures = {
   /** A brand-new customer, already signed in on `page`. */
   customer: TestCustomer;
-  menuItems: { loaves: MenuItem[]; toppings: MenuItem[] };
+  menuItems: { loaves: MenuItem[]; toppings: MenuItem[]; crackers: MenuItem[] };
 };
 
 // Playwright's convention names the callback `use`; it is called `provide`

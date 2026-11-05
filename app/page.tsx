@@ -2,12 +2,14 @@ import Link from 'next/link';
 import AddOnRow from '@/components/site/AddOnRow';
 import Footer from '@/components/site/Footer';
 import Hero from '@/components/site/Hero';
+import CrackerSection from '@/components/site/CrackerSection';
 import IdeaBanner from '@/components/site/IdeaBanner';
 import ProductCard from '@/components/site/ProductCard';
 import SectionDivider from '@/components/site/SectionDivider';
 import SiteNav from '@/components/site/SiteNav';
 import StickyOrderBar from '@/components/site/StickyOrderBar';
 import StorySection from '@/components/site/StorySection';
+import { getCrackerPacks } from '@/lib/crackers';
 import { getProducts, groupByCategory } from '@/lib/products';
 import { isWhishConfigured } from '@/lib/whish';
 
@@ -15,8 +17,8 @@ import { isWhishConfigured } from '@/lib/whish';
 export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
-  const products = await getProducts();
-  const { base, savory, sweet } = groupByCategory(products);
+  const [products, packs] = await Promise.all([getProducts(), getCrackerPacks()]);
+  const { base, savory, sweet, crackers } = groupByCategory(products);
 
   return (
     <>
@@ -92,6 +94,8 @@ export default async function HomePage() {
             </Link>
           </div>
         </section>
+
+        <CrackerSection flavors={crackers} packs={packs} />
 
         <IdeaBanner />
       </main>

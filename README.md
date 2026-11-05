@@ -53,9 +53,11 @@ or the seed will hang and then fail with a server-selection timeout.
 npm run seed
 ```
 
-Inserts the 8 menu products and the one admin user. **Safe to re-run** — products
-are upserted on `name`, so re-seeding never overwrites prices or images you've
-edited in the CMS. It does reset the admin password to the current `ADMIN_PASSWORD`.
+Adds the 8 loaves and toppings, the 8 cracker flavors, the two cracker packs and
+the admin user (`lib/seed-catalogue.ts`). **Safe to re-run** — everything is added
+only if missing, matched by name, so re-seeding never touches a price, photo or
+description you've edited in the CMS. It does reset the admin password to the
+current `ADMIN_PASSWORD`; that is how you change it.
 
 ### 5. Run
 
@@ -96,6 +98,14 @@ headline text — the stages spread across however many headline lines there are
 Visitors who ask for reduced motion get an ordinary hero showing the finished
 loaf.
 
+**Sourdough crackers** are the second product line ("The Sourdough Crackers",
+on the home page and under the menu's Crackers tab). The customer picks a pack —
+Discovery 50g or Sharing 100g — and taps the flavors to mix into it, up to the
+pack's limit. Packs have quantities: the same pack with the same flavors is one
+line whose quantity goes up. The flavors are ordinary products in the `cracker`
+category with no price of their own; the pack carries the price. Loaves and packs
+share one cart, one total and one payment.
+
 Signed-in customers find everything they have ordered under "My orders" in the
 nav (`/orders`): orders paid online and cash orders alike, each opening its own
 page.
@@ -107,8 +117,10 @@ the idea written in. Nothing is stored. Both use the number in `lib/config.ts`.
 
 One admin. Log in at `/admin/login`, then see paid and cash orders at `/admin/orders`
 (soonest pickup first; mark each one done when it is handed over), manage
-products at `/admin/products` (add, edit, delete, replace images) and the hero photograph and text plus the Our Story text and photographs at
-`/admin/story`.
+products at `/admin/products` (add, edit, delete, replace images — cracker
+flavors live here too, under the category "Crackers"), set cracker pack names,
+weights, prices and flavor limits at `/admin/crackers`, and edit the hero
+photograph and text plus the Our Story text and photographs at `/admin/story`.
 
 Auth is a signed JWT in an httpOnly cookie. `middleware.ts` does an optimistic
 check so a signed-out admin gets redirected rather than seeing a flash of the
@@ -132,6 +144,7 @@ treated as an authorization boundary.
 | `POST /api/orders` | Signed-in customer — places a cash-on-delivery order |
 | `GET /api/whish/callback` | Public — called by Whish; trusts nothing in the request |
 | `PATCH /api/orders/:id` | Admin |
+| `PATCH /api/cracker-packs/:id` | Admin |
 | `GET /api/story` | Public |
 | `PATCH /api/story` | Admin |
 
@@ -381,6 +394,7 @@ the CMS or drop a file over the existing name:
 | `npm run seed` | Seed products + admin (idempotent) |
 | `npm run whish:check` | Smoke-test the Whish credentials in `.env.local` |
 | `npm run whish:mock` | Local stand-in for Whish, for development |
+| `npm run dev:preview` | The site on the test database, seeded, with the Whish stand-in — for trying changes that need data the live database doesn't have yet |
 | `npm run test:e2e` | End-to-end tests (Playwright), both with and without payments |
 | `npm run lint` | ESLint |
 
@@ -403,10 +417,16 @@ once pointed at the mock (the full payment flow, including a declined payment, a
 lost callback, a duplicate callback and a forged one). `test:e2e:off` and
 `test:e2e:on` run one pass each.
 
-The tests use the real database, because local development and production share
-one. Everything they create belongs to customers under `@e2e.labellefournee.test`
-and is deleted before and after each run; they read the menu but never change
-it, and they open the CMS without saving anything.
+The tests never touch the live database. They run on their own database on the
+same cluster, `bakery_e2e` (`e2e/support/test-db.ts`), which is emptied and
+seeded with the full catalogue before every run and emptied again afterwards.
+Every helper refuses to run against a database with any other name. This matters
+because orders take numbers from a counter: tests in the live database used up
+real order numbers.
+
+The test database is emptied collection by collection rather than dropped: the
+Atlas user is not allowed to drop databases, and emptying keeps the indexes the
+app relies on.
 
 ---
 

@@ -85,5 +85,7 @@ export function groupByCategory(products: ProductDTO[]) {
     base: products.filter((p) => p.category === 'base'),
     savory: products.filter((p) => p.category === 'savory'),
     sweet: products.filter((p) => p.category === 'sweet'),
+    /** Cracker flavors. Their price lives on the pack, not here. */
+    crackers: products.filter((p) => p.category === 'cracker'),
   };
 }

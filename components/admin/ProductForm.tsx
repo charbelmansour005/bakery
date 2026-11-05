@@ -30,7 +30,9 @@ export default function ProductForm({ product }: { product?: ProductDTO }) {
     event.preventDefault();
     setError(null);
 
-    if (!DOLLARS_PATTERN.test(price.trim())) {
+    // A cracker flavor has no price of its own: the pack it goes into does.
+    const isCracker = category === 'cracker';
+    if (!isCracker && !DOLLARS_PATTERN.test(price.trim())) {
       setError('Price must be a dollar amount, like 4 or 4.50.');
       return;
     }
@@ -41,7 +43,7 @@ export default function ProductForm({ product }: { product?: ProductDTO }) {
       name: name.trim(),
       category,
       description: description.trim(),
-      price: dollarsToCents(price.trim()),
+      price: isCracker ? 0 : dollarsToCents(price.trim()),
       imageUrl: imageUrl.trim(),
       sortOrder: Number(sortOrder) || 0,
     };
@@ -102,6 +104,16 @@ export default function ProductForm({ product }: { product?: ProductDTO }) {
           </select>
         </div>
 
+        {category === 'cracker' ? (
+          <div className="rounded-md border border-dashed border-slate-300 px-3 py-2.5 text-sm text-slate-600">
+            Cracker flavors have no price of their own — customers pay per pack. Set pack prices
+            under{' '}
+            <Link href="/admin/crackers" className="font-medium text-slate-900 underline">
+              Crackers
+            </Link>
+            .
+          </div>
+        ) : (
         <div>
           <label htmlFor="price" className="block text-sm font-medium text-slate-700">
             Price (USD)
@@ -119,6 +131,7 @@ export default function ProductForm({ product }: { product?: ProductDTO }) {
             Stored as cents. Add-ons display with a leading “+”.
           </p>
         </div>
+        )}
       </div>
 
       <div>

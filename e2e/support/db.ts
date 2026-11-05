@@ -1,24 +1,28 @@
 import { hash } from 'bcryptjs';
 import mongoose from 'mongoose';
 import { CUSTOMER_COOKIE, signSession } from '../../lib/jwt';
+import { seedCatalogue } from '../../lib/seed-catalogue';
+import { TEST_DATABASE, testDatabaseUri } from './test-db';
 
 /**
- * Direct database access for the tests.
- *
- * Local development and production share one database, so everything here is
- * scoped to addresses under TEST_DOMAIN. Nothing else is ever read for
- * deletion, and global-teardown removes all of it.
+ * Direct database access for the tests — always the tests' own database
+ * (bakery_e2e), never the one the live site uses. Customers still get
+ * addresses under TEST_DOMAIN, so anything that did leak would be obvious.
  */
 export const TEST_DOMAIN = 'e2e.labellefournee.test';
 
 let connecting: Promise<typeof mongoose> | null = null;
 
 export async function db() {
-  const uri = process.env.MONGODB_URI;
-  if (!uri) throw new Error('MONGODB_URI is not set — the tests need .env.local.');
-  connecting ??= mongoose.connect(uri);
+  connecting ??= mongoose.connect(testDatabaseUri());
   await connecting;
-  return mongoose.connection.db!;
+  const database = mongoose.connection.db!;
+  // The one check that matters most in this file: everything below writes and
+  // deletes freely, which is only acceptable in the test database.
+  if (database.databaseName !== TEST_DATABASE) {
+    throw new Error(`Refusing to run tests against "${database.databaseName}".`);
+  }
+  return database;
 }
 
 export async function disconnect() {
@@ -61,19 +65,37 @@ export async function plantSignInCode(email: string, code: string): Promise<void
 
 export type MenuItem = { id: string; name: string; price: number };
 
-/** Two loaves and two toppings from the live menu, whatever it holds today. */
-export async function menu(): Promise<{ loaves: MenuItem[]; toppings: MenuItem[] }> {
+/**
+ * The test database's menu: loaves, toppings (savory and sweet) and cracker
+ * flavors, each in menu order. Cracker flavors are not toppings, and the two
+ * must never be mixed up — a cracker cannot go on a loaf.
+ */
+export async function menu(): Promise<{ loaves: MenuItem[]; toppings: MenuItem[]; crackers: MenuItem[] }> {
   const products = await (await db()).collection('products').find({}).sort({ sortOrder: 1 }).toArray();
-  const pick = (base: boolean) =>
+  const pick = (categories: string[]) =>
     products
-      .filter((p) => (p.category === 'base') === base)
+      .filter((p) => categories.includes(p.category))
       .map((p) => ({ id: p._id.toString(), name: p.name as string, price: p.price as number }));
-  const loaves = pick(true);
-  const toppings = pick(false);
+  const loaves = pick(['base']);
+  const toppings = pick(['savory', 'sweet']);
+  const crackers = pick(['cracker']);
   if (loaves.length < 1 || toppings.length < 1) {
     throw new Error('The menu needs at least one loaf and one topping for these tests.');
   }
-  return { loaves, toppings };
+  return { loaves, toppings, crackers };
+}
+
+export type PackItem = { id: string; name: string; grams: number; price: number; maxFlavors: number };
+
+export async function packs(): Promise<PackItem[]> {
+  const docs = await (await db()).collection('crackerpacks').find({}).sort({ sortOrder: 1 }).toArray();
+  return docs.map((p) => ({
+    id: p._id.toString(),
+    name: p.name as string,
+    grams: p.grams as number,
+    price: p.price as number,
+    maxFlavors: p.maxFlavors as number,
+  }));
 }
 
 export async function setCart(
@@ -97,6 +119,35 @@ export async function setCart(
   );
 }
 
+export async function setCrackers(
+  customer: TestCustomer,
+  crackers: { packId: string; flavorIds: string[]; quantity: number }[],
+): Promise<void> {
+  const id = new mongoose.Types.ObjectId(customer.id);
+  await (await db()).collection('carts').updateOne(
+    { customerId: id },
+    {
+      $set: {
+        crackers: crackers.map((line) => ({
+          pack: new mongoose.Types.ObjectId(line.packId),
+          flavors: line.flavorIds.map((flavor) => new mongoose.Types.ObjectId(flavor)),
+          quantity: line.quantity,
+        })),
+        updatedAt: new Date(),
+      },
+      $setOnInsert: { createdAt: new Date(), lines: [] },
+    },
+    { upsert: true },
+  );
+}
+
+export async function crackerLines(customer: TestCustomer) {
+  const cart = await (await db())
+    .collection('carts')
+    .findOne({ customerId: new mongoose.Types.ObjectId(customer.id) });
+  return (cart?.crackers ?? []) as { pack: unknown; flavors: unknown[]; quantity: number }[];
+}
+
 export async function cartLineCount(customer: TestCustomer): Promise<number> {
   const cart = await (await db())
     .collection('carts')
@@ -112,28 +163,31 @@ export async function ordersOf(customer: TestCustomer) {
     .toArray();
 }
 
-/** Removes every trace of the test customers. Safe to run at any time. */
-export async function removeTestData(): Promise<Record<string, number>> {
+/**
+ * Empties every collection in the test database. Not dropDatabase(): the Atlas
+ * user is not allowed to drop databases (rightly), and emptying keeps the
+ * indexes — one order per number, one customer per email — that the app relies on.
+ */
+async function emptyTestDatabase(): Promise<void> {
   const database = await db();
-  const pattern = new RegExp(`@${TEST_DOMAIN.replace(/\./g, '\\.')}$`);
-  const customers = await database.collection('customers').find({ email: pattern }).toArray();
-  const ids = customers.map((c) => c._id);
-
-  const orders = await database.collection('orders').deleteMany({ customerId: { $in: ids } });
-  const carts = await database.collection('carts').deleteMany({ customerId: { $in: ids } });
-  const codes = await database.collection('otptokens').deleteMany({ email: pattern });
-  const removed = await database.collection('customers').deleteMany({ email: pattern });
-
-  // Only the mock ever saw these order numbers. If no order of any kind is
-  // left, the sequence can start clean; once real orders exist it is left alone.
-  if ((await database.collection('orders').countDocuments({})) === 0) {
-    await database.collection('counters').deleteOne({ _id: 'order' as never });
+  for (const collection of await database.collections()) {
+    await collection.deleteMany({});
   }
+}
 
-  return {
-    customers: removed.deletedCount,
-    orders: orders.deletedCount,
-    carts: carts.deletedCount,
-    codes: codes.deletedCount,
-  };
+/**
+ * Wipes the test database and seeds a fresh menu, cracker packs and admin user
+ * into it. Run before every test run.
+ */
+export async function resetTestDatabase(): Promise<void> {
+  await emptyTestDatabase();
+  await seedCatalogue({
+    adminUsername: process.env.ADMIN_USERNAME,
+    adminPassword: process.env.ADMIN_PASSWORD,
+  });
+}
+
+/** Empties the test database once a run is over. */
+export async function dropTestDatabase(): Promise<void> {
+  await emptyTestDatabase();
 }

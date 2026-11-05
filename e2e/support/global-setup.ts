@@ -1,7 +1,7 @@
-import { disconnect, removeTestData } from './db';
+import { disconnect, resetTestDatabase } from './db';
 
-/** Start from a clean slate, in case an earlier run was interrupted. */
+/** A fresh test database for every run: wiped, then seeded. */
 export default async function globalSetup() {
-  await removeTestData();
+  await resetTestDatabase();
   await disconnect();
 }

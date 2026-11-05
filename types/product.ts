@@ -1,11 +1,17 @@
-export const CATEGORIES = ['base', 'savory', 'sweet'] as const;
+export const CATEGORIES = ['base', 'savory', 'sweet', 'cracker'] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 export const CATEGORY_LABELS: Record<Category, string> = {
   base: 'Base Loaves',
   savory: 'Savory',
   sweet: 'Sweet',
+  cracker: 'Crackers',
 };
+
+/** A topping folded through a loaf. Crackers are not toppings. */
+export function isTopping(category: Category): boolean {
+  return category === 'savory' || category === 'sweet';
+}
 
 /**
  * The only shape of a product that crosses the server/client boundary.

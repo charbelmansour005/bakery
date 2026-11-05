@@ -21,7 +21,8 @@ export type OrderMode = (typeof ORDER_MODES)[number];
  * One ordered item, as it was priced at checkout. A copy, not a reference: the
  * menu can change the next day and the order must still say what was paid for.
  */
-export type OrderLineDTO = {
+export type LoafOrderLine = {
+  kind: 'loaf';
   /** The cart line this came from (the topping's id, or the loaf's when plain). */
   key: string;
   baseName: string;
@@ -31,6 +32,20 @@ export type OrderLineDTO = {
   addOnPriceCents: number;
   totalCents: number;
 };
+
+export type CrackerOrderLine = {
+  kind: 'cracker';
+  /** The cart line this came from: the pack and its flavors. */
+  key: string;
+  packName: string;
+  grams: number;
+  flavorNames: string[];
+  quantity: number;
+  unitPriceCents: number;
+  totalCents: number;
+};
+
+export type OrderLineDTO = LoafOrderLine | CrackerOrderLine;
 
 /** Plain JSON, no ObjectId and no Date — safe to hand to a Client Component. */
 export type OrderDTO = {
@@ -56,7 +71,14 @@ export type OrderDTO = {
   fulfilledAt: string | null;
 };
 
-/** "Multigrain on Classic" / "Classic, plain" — the name a line goes by everywhere. */
+/**
+ * The name a line goes by everywhere:
+ *   "Multigrain on Classic" · "Classic, plain" · "Sharing Pack 100g · Salt, Za'atar × 2"
+ */
 export function orderLineTitle(line: OrderLineDTO): string {
+  if (line.kind === 'cracker') {
+    const quantity = line.quantity > 1 ? ` × ${line.quantity}` : '';
+    return `${line.packName} ${line.grams}g · ${line.flavorNames.join(', ')}${quantity}`;
+  }
   return line.addOnName ? `${line.addOnName} on ${line.baseName}` : `${line.baseName}, plain`;
 }
