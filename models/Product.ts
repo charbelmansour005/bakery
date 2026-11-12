@@ -5,10 +5,14 @@ const productSchema = new Schema(
   {
     name: { type: String, required: true, trim: true },
     category: { type: String, required: true, enum: CATEGORIES },
-    description: { type: String, required: true, trim: true, default: '' },
+    // Not `required`: a required String rejects '', and an empty description (or
+    // no photo yet) is a normal state — every cracker flavor starts that way.
+    // Mongoose treats '' as missing, so `required` made saving such a product
+    // fail with an opaque 500. The API schema already guarantees a string.
+    description: { type: String, trim: true, default: '' },
     /** integer cents */
     price: { type: Number, required: true, min: 0 },
-    imageUrl: { type: String, required: true, default: '' },
+    imageUrl: { type: String, trim: true, default: '' },
     sortOrder: { type: Number, required: true, default: 0 },
   },
   { timestamps: true },

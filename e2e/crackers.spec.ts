@@ -220,3 +220,36 @@ test.describe('the CMS', () => {
     await expect(page.getByText('customers pay per pack')).toBeVisible();
   });
 });
+
+test.describe('saving products with nothing in the optional fields', () => {
+  test('a cracker flavor saves with an empty description — the reported failure — and with no photo', async ({ page }) => {
+    await signInAsAdmin(page, '/admin/products');
+    const row = page.getByRole('row', { name: /Salt/ }).filter({ hasText: 'per pack' });
+    await row.getByRole('link', { name: 'Edit' }).click();
+    await page.waitForURL('**/admin/products/*/edit');
+
+    // Every cracker flavor starts with an empty description.
+    await expect(page.locator('#description')).toHaveValue('');
+    await page.getByRole('button', { name: 'Save changes' }).click();
+    await page.waitForURL('**/admin/products');
+    await expect(page.getByText('Could not save the product.')).toHaveCount(0);
+
+    // And the API agrees, for both optional fields at once.
+    const id = (await page.request.get('/api/products').then((r) => r.json())).products.find(
+      (p: { name: string; category: string }) => p.name === 'Salt' && p.category === 'cracker',
+    ).id;
+    const saved = await page.request.patch(`/api/products/${id}`, { data: { description: '', imageUrl: '' } });
+    expect(saved.status()).toBe(200);
+    expect((await saved.json()).product).toMatchObject({ description: '', imageUrl: '' });
+  });
+
+  test('a new product can be created without a description or photo', async ({ page }) => {
+    await signInAsAdmin(page, '/admin/products');
+    const created = await page.request.post('/api/products', {
+      data: { name: 'Test flavor', category: 'cracker', description: '', price: 0, imageUrl: '', sortOrder: 200 },
+    });
+    expect(created.status()).toBe(201);
+    const { product } = await created.json();
+    expect((await page.request.delete(`/api/products/${product.id}`)).status()).toBe(200);
+  });
+});

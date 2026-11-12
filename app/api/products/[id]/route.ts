@@ -26,12 +26,19 @@ export async function PATCH(request: Request, { params }: Context) {
     );
   }
 
-  const product = await updateProduct(id, parsed.data);
-  if (!product) return NextResponse.json({ error: 'Not found.' }, { status: 404 });
+  try {
+    const product = await updateProduct(id, parsed.data);
+    if (!product) return NextResponse.json({ error: 'Not found.' }, { status: 404 });
 
-  revalidatePath('/');
-  revalidatePath('/menu');
-  return NextResponse.json({ product });
+    revalidatePath('/');
+    revalidatePath('/menu');
+    return NextResponse.json({ product });
+  } catch (err) {
+    // Without this, a database error is an empty 500 and the CMS can only say
+    // "could not save" — with nothing in the logs to say why.
+    console.error('[products] could not update a product:', err instanceof Error ? `${err.name}: ${err.message}` : err);
+    return NextResponse.json({ error: 'Could not save the product. Try again.' }, { status: 500 });
+  }
 }
 
 export async function DELETE(_request: Request, { params }: Context) {

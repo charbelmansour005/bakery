@@ -27,8 +27,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const product = await createProduct(parsed.data);
-  revalidatePath('/');
-  revalidatePath('/menu');
-  return NextResponse.json({ product }, { status: 201 });
+  try {
+    const product = await createProduct(parsed.data);
+    revalidatePath('/');
+    revalidatePath('/menu');
+    return NextResponse.json({ product }, { status: 201 });
+  } catch (err) {
+    console.error('[products] could not create a product:', err instanceof Error ? `${err.name}: ${err.message}` : err);
+    return NextResponse.json({ error: 'Could not create the product. Try again.' }, { status: 500 });
+  }
 }
