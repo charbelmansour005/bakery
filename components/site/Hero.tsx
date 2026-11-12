@@ -1,14 +1,14 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { getStory } from '@/lib/story';
-import DoughScene from './DoughScene';
 import FleurDeLis from './FleurDeLis';
 import HeroScroll from './HeroScroll';
+import JarScroll from './JarScroll';
 
 /**
  * Photograph and copy come from the CMS; lib/story.ts falls back to the
- * defaults. The picture beside the headline is a sourdough story that plays as
- * the visitor scrolls through the hero (see HeroScroll and DoughScene).
+ * defaults. The picture beside the headline is the bakery's own starter jar
+ * rising, played by scrolling through the hero (see HeroScroll and JarScroll).
  */
 export default async function Hero() {
   const { hero, heroEyebrow, heroHeadline, heroTagline } = await getStory();
@@ -45,11 +45,7 @@ export default async function Hero() {
 
             <h1 className="mt-4 font-display text-4xl leading-[1.15] text-cream sm:text-5xl lg:mt-6 lg:text-6xl">
               {lines.map((line, index) => (
-                <span
-                  key={index}
-                  data-hero-line
-                  className={`hero-line block ${index === lines.length - 1 && lines.length > 1 ? 'text-gold' : ''}`}
-                >
+                <span key={index} className={`block ${index === lines.length - 1 && lines.length > 1 ? 'text-gold' : ''}`}>
                   {line}
                 </span>
               ))}
@@ -75,7 +71,7 @@ export default async function Hero() {
             </div>
           </div>
 
-          <DoughScene className="order-first mx-auto h-[min(24dvh,15rem)] w-auto lg:order-last lg:h-auto lg:w-full lg:max-w-lg lg:justify-self-end" />
+          <JarScroll className="order-first mx-auto h-[min(26dvh,16rem)] w-auto lg:order-last lg:h-[min(72dvh,42rem)] lg:justify-self-center" />
         </div>
 
         {/* Says there is more to see; gone after the first scroll. */}

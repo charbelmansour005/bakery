@@ -1,16 +1,17 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './support/fixtures';
+import frames from '../lib/hero-frames.json';
 
 /**
- * The hero's scroll-driven sourdough story. No database writes: these tests only
- * read the home page, so they are safe to run against the shared database.
+ * The hero: the starter jar rising, played by scrolling. No database writes —
+ * these tests only read the home page.
  */
 
 const track = (page: Page) => page.locator('.hero-track');
 
-/** A CSS custom property on the hero, as a number. */
-async function hero(page: Page, name: string): Promise<number> {
-  return Number(await track(page).evaluate((el, prop) => getComputedStyle(el).getPropertyValue(prop), name));
+/** The hero's progress (0 to 1), as written by the scroll handler. */
+async function progress(page: Page): Promise<number> {
+  return Number(await track(page).evaluate((el) => getComputedStyle(el).getPropertyValue('--p')));
 }
 
 /** Scrolls to a fraction (0 to 1) of the way through the hero's pinned stretch. */
@@ -23,41 +24,63 @@ async function scrollThroughHero(page: Page, fraction: number) {
   }, fraction);
 }
 
-const activeLine = (page: Page) =>
-  page.evaluate(() =>
-    [...document.querySelectorAll<HTMLElement>('[data-hero-line]')].findIndex((line) => line.dataset.active === 'true'),
-  );
+/** A fingerprint of what the canvas is showing right now. */
+const picture = (page: Page) =>
+  page.evaluate(() => {
+    const canvas = document.querySelector<HTMLCanvasElement>('.hero-track canvas')!;
+    const { data } = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height);
+    let sum = 0;
+    for (let i = 0; i < data.length; i += 4 * 97) sum += data[i] + data[i + 1] + data[i + 2];
+    return sum;
+  });
 
-test.describe('hero animation', () => {
-  test('starts at the first stage, and the story advances as the page scrolls', async ({ page }) => {
+const framesFetched = (page: Page) =>
+  page.evaluate(() => performance.getEntriesByType('resource').filter((e) => e.name.includes('/images/hero-jar/')).length);
+
+test.describe('hero jar', () => {
+  test('every frame arrives, and the picture follows the scroll — forwards and back', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await expect.poll(() => framesFetched(page), { timeout: 30_000 }).toBeGreaterThanOrEqual(frames.count);
 
-    // The opening frame: a starter jar, the first line lit.
-    expect(await hero(page, '--p')).toBe(0);
-    await expect.poll(() => activeLine(page)).toBe(0);
-    await expect(page.locator('.ds-jar')).toHaveCSS('opacity', '1');
-    await expect(page.locator('.ds-crust')).toHaveCSS('opacity', '0');
-
-    // Partway through: the starter has risen and the dough is taking shape.
-    await scrollThroughHero(page, 0.25);
-    await expect.poll(() => hero(page, '--p1')).toBeGreaterThan(0.4);
+    // Let the opening frame draw, then remember it.
+    await expect.poll(() => progress(page)).toBe(0);
+    await expect.poll(() => picture(page)).toBeGreaterThan(0);
+    const opening = await picture(page);
 
     await scrollThroughHero(page, 0.5);
-    await expect.poll(() => hero(page, '--p2')).toBeGreaterThan(0.3);
-    await expect.poll(() => activeLine(page)).toBe(1);
+    await expect.poll(() => progress(page)).toBeCloseTo(0.5, 1);
+    await expect.poll(() => picture(page)).not.toBe(opening);
+    const middle = await picture(page);
 
-    // The end: the jar is gone, the loaf is baked, the last line is lit.
     await scrollThroughHero(page, 1);
-    await expect.poll(() => hero(page, '--p3')).toBeGreaterThan(0.99);
-    await expect.poll(() => activeLine(page)).toBe(2);
-    await expect(page.locator('.ds-jar')).toHaveCSS('opacity', '0');
-    await expect(page.locator('.ds-crust')).toHaveCSS('opacity', '1');
+    await expect.poll(() => progress(page)).toBeGreaterThan(0.99);
+    await expect.poll(() => picture(page)).not.toBe(middle);
+    const end = await picture(page);
+    expect(end).not.toBe(opening);
 
-    // And it runs backwards: scrolling up returns to the start.
+    // Scrolling back up plays it in reverse: the very same pictures return.
+    await scrollThroughHero(page, 0.5);
+    await expect.poll(() => picture(page)).toBe(middle);
     await scrollThroughHero(page, 0);
-    await expect.poll(() => hero(page, '--p')).toBe(0);
-    await expect.poll(() => activeLine(page)).toBe(0);
+    await expect.poll(() => picture(page)).toBe(opening);
+  });
+
+  test('the first and last frames are fetched before the rest, so scrubbing works early', async ({ page }) => {
+    const requested: string[] = [];
+    page.on('request', (request) => {
+      if (request.url().includes('/images/hero-jar/')) requested.push(request.url().split('/').pop()!);
+    });
+    await page.goto('/');
+    await expect.poll(() => requested.length, { timeout: 30_000 }).toBeGreaterThanOrEqual(frames.count);
+
+    const first = String(0).padStart(3, '0') + '.webp';
+    const last = String(frames.count - 1).padStart(3, '0') + '.webp';
+    // The page's own <img> asks for frame 0 straight away; the last follows within the first few.
+    expect(requested.indexOf(first)).toBeLessThan(4);
+    expect(requested.indexOf(last)).toBeLessThan(8);
+    // And a coarse set (every 16th) arrives before the in-betweens: frame 16 before frame 17.
+    expect(requested.indexOf('016.webp')).toBeLessThan(requested.indexOf('017.webp'));
   });
 
   test('the stage holds still while pinned, then lets the page go', async ({ page }) => {
@@ -92,14 +115,16 @@ test.describe('hero animation', () => {
     await expect(page.locator('#story')).toBeInViewport();
   });
 
-  test('a phone gets the whole hero on the first screen, with room to spare', async ({ page }) => {
+  test('a phone gets the whole hero on the first screen, jar included', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
-    const scene = (await page.locator('.dough-scene').boundingBox())!;
+    const jar = (await page.locator('.hero-track canvas').locator('..').boundingBox())!;
     const lastButton = (await page.locator('.hero-stage a').last().boundingBox())!;
-    expect(scene.y).toBeGreaterThanOrEqual(0);
+    expect(jar.y).toBeGreaterThanOrEqual(0);
+    expect(jar.x).toBeGreaterThanOrEqual(0);
+    expect(jar.x + jar.width).toBeLessThanOrEqual(375);
     expect(lastButton.y + lastButton.height).toBeLessThanOrEqual(667);
 
     const overflowing = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
@@ -108,36 +133,37 @@ test.describe('hero animation', () => {
 
   test('the picture is decorative and the headline stays real text', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('.dough-scene')).toHaveAttribute('aria-hidden', 'true');
+    await expect(page.locator('.hero-track canvas').locator('..')).toHaveAttribute('aria-hidden', 'true');
     await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
     expect(await page.getByRole('heading', { level: 1 }).innerText()).not.toBe('');
   });
 });
 
-test.describe('hero animation, reduced motion', () => {
+test.describe('hero jar, reduced motion', () => {
   test.use({ reducedMotion: 'reduce' });
 
-  test('no pinning and no scroll animation: an ordinary hero showing the finished loaf', async ({ page }) => {
+  test('an ordinary hero showing the risen starter, with nothing animated or downloaded', async ({ page }) => {
+    const requested: string[] = [];
+    page.on('request', (request) => {
+      if (request.url().includes('/images/hero-jar/')) requested.push(request.url().split('/').pop()!);
+    });
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     // An ordinary-height hero, not a two-screen scroll.
     const height = (await track(page).boundingBox())!.height;
-    const viewport = page.viewportSize()!.height;
-    expect(height).toBeLessThan(viewport * 1.5);
+    expect(height).toBeLessThan(page.viewportSize()!.height * 1.5);
     await expect(page.locator('.hero-stage')).not.toHaveCSS('position', 'sticky');
+    expect(await progress(page)).toBe(1);
 
-    // The finished picture, from the first frame.
-    await expect(page.locator('.ds-crust')).toHaveCSS('opacity', '1');
-    await expect(page.locator('.ds-jar')).toHaveCSS('opacity', '0');
-    expect(await hero(page, '--p3')).toBe(1);
-
-    // Every headline line stays readable, because nothing dims them.
-    const dimmed = await page.locator('[data-hero-line][data-active="false"]').count();
-    expect(dimmed).toBe(0);
+    // The last frame, and only that one: the rest is never fetched.
+    const lastFrame = String(frames.count - 1).padStart(3, '0') + '.webp';
+    await expect.poll(() => page.locator('.hero-track picture img').evaluate((img: HTMLImageElement) => img.currentSrc)).toContain(lastFrame);
+    await page.waitForTimeout(1500);
+    expect(requested.filter((name) => name !== lastFrame)).toEqual([]);
 
     // Scrolling changes nothing about the picture.
     await page.evaluate(() => window.scrollTo({ top: 300, behavior: 'instant' }));
-    expect(await hero(page, '--p3')).toBe(1);
+    expect(await progress(page)).toBe(1);
   });
 });

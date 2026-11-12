@@ -98,19 +98,15 @@
 }
 
 /*
- * Hero: a sourdough story that plays as the visitor scrolls through it.
+ * Hero: the starter jar rising, played by scrolling through the hero.
  *
- * HeroScroll writes --p (overall) and --p1..--p3 (each stage) onto
- * .hero-track as the page scrolls; everything below is CSS reading them. The
- * defaults here are the opening state, and reduced motion swaps them for the
- * finished picture, so those visitors get an ordinary hero showing the baked
- * loaf and the script never runs for them.
+ * HeroScroll writes --p (0 to 1) onto .hero-track as the page scrolls and
+ * JarScroll draws the matching frame. The default here is the opening state;
+ * reduced motion swaps it for the end, so those visitors get an ordinary hero
+ * showing the risen starter and the script never runs for them.
  */
 .hero-track {
   --p: 0;
-  --p1: 0;
-  --p2: 0;
-  --p3: 0;
   /* Hold still while the scroll runs: about two screens of travel. Set here, in
      CSS, so the page below never jumps when scripts load. */
   height: 300dvh;
@@ -125,13 +121,6 @@
   /* On the stage, not the section: overflow on an ancestor of a sticky element
      stops it sticking. */
   overflow: hidden;
-}
-
-.hero-line {
-  transition: opacity 0.4s ease;
-}
-.hero-line[data-active='false'] {
-  opacity: 0.38;
 }
 
 .hero-cue {
@@ -155,9 +144,6 @@
 @media (prefers-reduced-motion: reduce) {
   .hero-track {
     --p: 1;
-    --p1: 1;
-    --p2: 1;
-    --p3: 1;
     height: auto;
   }
   .hero-stage {
@@ -168,70 +154,4 @@
   .hero-cue {
     display: none;
   }
-}
-
-.dough-scene * {
-  transform-box: fill-box;
-  transform-origin: center;
-}
-
-/* Stage 1: the starter jar. It leaves as stage 2 begins. */
-.dough-scene .ds-jar {
-  opacity: calc(1 - var(--p2) * 2.4);
-  translate: calc(var(--p2) * -64px) calc(var(--p2) * 10px);
-  scale: calc(1 - var(--p2) * 0.12);
-}
-.dough-scene .ds-starter {
-  transform-origin: 50% 100%;
-  scale: 1 calc(0.46 + var(--p1) * 0.5);
-}
-.dough-scene .ds-bubble {
-  translate: 0 calc(var(--p1) * var(--rise));
-  scale: calc(0.6 + var(--p1) * 0.8);
-  /* In at --s, out by --e. */
-  opacity: min(1, max(0, (var(--p1) - var(--s)) * 6), max(0, (var(--e) - var(--p1)) * 5));
-}
-
-/* Stage 2: a loose lump gathers into a loaf. */
-.dough-scene .ds-shadow {
-  opacity: calc(var(--p2) * 0.32);
-}
-.dough-scene .ds-blob {
-  opacity: min(1, max(0, (var(--p2) - 0.1) * 5), max(0, (1 - var(--p2)) * 2.5));
-  scale: calc(1.06 - var(--p2) * 0.1) calc(0.8 + var(--p2) * 0.1);
-}
-.dough-scene .ds-boule {
-  opacity: min(1, max(0, (var(--p2) - 0.35) * 3));
-  scale: calc(0.9 + var(--p2) * 0.1) calc(0.74 + var(--p2) * 0.26);
-}
-.dough-scene .ds-flour {
-  translate: 0 calc(var(--p2) * var(--rise));
-  opacity: min(1, max(0, (var(--p2) - var(--s)) * 6), max(0, (var(--e) - var(--p2)) * 4), max(0, 1 - var(--p3) * 5));
-}
-
-/* Stage 3: scored, baked, steaming. */
-.dough-scene .ds-crust {
-  opacity: min(1, max(0, (var(--p3) - 0.1) * 1.6));
-}
-.dough-scene .ds-sheen {
-  rotate: -16deg;
-  opacity: calc(var(--p3) * 0.2);
-}
-.dough-scene .ds-score {
-  stroke-dasharray: 1;
-  /* Draws itself over the first part of the stage, then holds. */
-  stroke-dashoffset: max(0, calc(1 - var(--p3) * 2.2));
-  opacity: min(1, max(0, (var(--p3) - 0.02) * 20));
-}
-.dough-scene .ds-steam {
-  opacity: min(0.7, max(0, (var(--p3) - var(--s)) * 3));
-  translate: 0 calc(var(--p3) * -30px);
-}
-
-/* The scene's backdrop: a slow turn while scrolling, a warm glow as it bakes. */
-.dough-scene .ds-ring {
-  rotate: calc(var(--p) * 50deg);
-}
-.dough-scene .ds-glow {
-  opacity: calc(0.12 + var(--p3) * 0.3);
 }
