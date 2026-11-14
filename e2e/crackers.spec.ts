@@ -1,5 +1,5 @@
 import { crackerLines, ordersOf, packs, setCart, setCrackers } from './support/db';
-import { dollars, expect, signInAsAdmin, test } from './support/fixtures';
+import { dollars, expect, pickupInDays, signInAsAdmin, test } from './support/fixtures';
 
 /**
  * Cracker packs: a size, the flavors mixed into it, and a quantity. Runs in both
@@ -114,6 +114,31 @@ test.describe('the server’s rules for packs', () => {
     const ok = await put([{ packId: sharing.id, flavorIds: [flavors[0], flavors[1]], quantity: 3 }]);
     expect(ok.status()).toBe(200);
     expect((await ok.json()).cart.totalCents).toBe(sharing.price * 3);
+  });
+});
+
+test.describe('a crackers-only order', () => {
+  test('placing one is not refused as empty, whether paid online or cash', async ({ page, customer, menuItems }) => {
+    const [, sharing] = await packs();
+    // No loaves at all: this is what the customer who reported the empty-cart error had.
+    await setCart(customer, []);
+    await setCrackers(customer, [
+      { packId: sharing.id, flavorIds: menuItems.crackers.slice(0, sharing.maxFlavors).map((flavor) => flavor.id), quantity: 2 },
+    ]);
+    const total = sharing.price * 2;
+
+    const cash = await page.request.post('/api/orders', { data: { phone: '71032883', pickupDate: pickupInDays(3), note: '', expectedTotalCents: total } });
+    expect(cash.status()).toBe(200);
+    expect(await crackerLines(customer)).toHaveLength(0);
+
+    // Set the cart up again and try the Whish path.
+    await setCrackers(customer, [
+      { packId: sharing.id, flavorIds: menuItems.crackers.slice(0, sharing.maxFlavors).map((flavor) => flavor.id), quantity: 2 },
+    ]);
+    const whish = await page.request.post('/api/checkout', { data: { phone: '71032883', pickupDate: pickupInDays(3), note: '', expectedTotalCents: total } });
+    // 503 when payment is off is also a pass; what matters is it isn't the "empty" 400.
+    expect([200, 503]).toContain(whish.status());
+    if (whish.status() === 400) throw new Error('Whish checkout refused the crackers-only cart');
   });
 });
 

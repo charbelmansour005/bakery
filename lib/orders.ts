@@ -167,7 +167,8 @@ async function cartForOrder(session: CustomerSession, expectedTotalCents: number
   // The server's copy of the cart, at today's prices. Nothing about the items
   // or their prices is taken from the request.
   const cart = await getCart(session.sub);
-  if (cart.lines.length === 0) {
+  // Either kind of item makes an order: a loaf, a cracker pack, or both.
+  if (cart.lines.length === 0 && cart.crackers.length === 0) {
     throw new OrderError('Your order is empty.');
   }
   if (cart.totalCents !== expectedTotalCents) {
